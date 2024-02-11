@@ -4,6 +4,7 @@ import argparse
 import sys
 
 import numpy as np
+from scipy import signal
 import sounddevice as sd
 
 
@@ -28,32 +29,43 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     parents=[parser])
 parser.add_argument(
-    'frequency', nargs='?', metavar='FREQUENCY', type=float, default=500,
+    'frequency', nargs='?', metavar='FREQUENCY', type=float, default=100,
     help='frequency in Hz (default: %(default)s)')
 parser.add_argument(
     '-d', '--device', type=int_or_str,
     help='output device (numeric ID or substring)')
 parser.add_argument(
-    '-a', '--amplitude', type=float, default=0.2,
+    '-a', '--amplitude', type=float, default=0.3,
+    help='amplitude (default: %(default)s)')
+parser.add_argument(
+    '-b', '--bpm', type=int, default=60,
+    help='amplitude (default: %(default)s)')
+parser.add_argument(
+    '-s', '--size', type=int, default=10,
     help='amplitude (default: %(default)s)')
 args = parser.parse_args(remaining)
 
-start_idx = 0
-
 try:
-    samplerate = sd.query_devices(args.device, 'output')['default_samplerate']
+
+    sample_rate = sd.query_devices(args.device, 'output')['default_samplerate']
+    block_size = 60 * int(sample_rate)
+    pulses = np.zeros((block_size, 1))
+    pulse = int(sample_rate * args.size / 1000)
+    interval = block_size // args.bpm
+    for i in range(args.bpm):
+        start = i * interval
+        end = i * interval + pulse
+        t = np.linspace(0, args.size / 1000, pulse, endpoint=False)
+        pulses[start : end, 0] = args.amplitude * signal.square(2 * np.pi * args.frequency * t)
+
 
     def callback(outdata, frames, time, status):
         if status:
             print(status, file=sys.stderr)
-        global start_idx
-        t = (start_idx + np.arange(frames)) / samplerate
-        t = t.reshape(-1, 1)
-        outdata[:] = args.amplitude * np.sin(2 * np.pi * args.frequency * t)
-        start_idx += frames
+        outdata[:] = pulses
 
     with sd.OutputStream(device=args.device, channels=1, callback=callback,
-                         samplerate=samplerate):
+                         samplerate=sample_rate, blocksize=60*int(sample_rate)):
         print('#' * 80)
         print('press Return to quit')
         print('#' * 80)
