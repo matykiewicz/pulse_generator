@@ -6,7 +6,9 @@ authors = ["Entaroadun <pawel.matykiewicz@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.11"
+sounddevice = "^0.4.6"
+numpy = "^1.26.4"
 
 
 [build-system]
