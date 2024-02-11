@@ -29,13 +29,13 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     parents=[parser])
 parser.add_argument(
-    'frequency', nargs='?', metavar='FREQUENCY', type=float, default=100,
+    'frequency', nargs='?', metavar='FREQUENCY', type=float, default=0.01,
     help='frequency in Hz (default: %(default)s)')
 parser.add_argument(
     '-d', '--device', type=int_or_str,
     help='output device (numeric ID or substring)')
 parser.add_argument(
-    '-a', '--amplitude', type=float, default=0.3,
+    '-a', '--amplitude', type=float, default=300.0,
     help='amplitude (default: %(default)s)')
 parser.add_argument(
     '-b', '--bpm', type=int, default=60,
@@ -51,11 +51,11 @@ try:
     block_size = 60 * int(sample_rate)
     pulses = np.zeros((block_size, 1))
     pulse = int(sample_rate * args.size / 1000)
-    interval = block_size // args.bpm
+    interval = (block_size // args.bpm) + 1
     for i in range(args.bpm):
         start = i * interval
         end = i * interval + pulse
-        t = np.linspace(0, args.size / 1000, pulse, endpoint=False)
+        t = np.linspace(0, 0.5, pulse, endpoint=False)
         pulses[start : end, 0] = args.amplitude * signal.square(2 * np.pi * args.frequency * t)
 
 
