@@ -1,12 +1,17 @@
 from argparse import Namespace
 from typing import List
 
+from .parts import Scheduler
+
 import numpy as np
 import sounddevice as sd
 
 
 class Engine:
     pulse: np.ndarray
+
+    def __init__(self):
+        scheduler = Scheduler()
 
     @classmethod
     def start(cls, args: Namespace):
@@ -18,4 +23,6 @@ class Engine:
 
     @staticmethod
     def get_audio_devs() -> List:
-        devs = sd.query_devices()
+        all_devs = sd.query_devices()
+        some_devs = list()
+        return some_devs
