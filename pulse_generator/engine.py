@@ -1,28 +1,25 @@
 from argparse import Namespace
-from typing import List
 
+from .configs import ArgsConfig
 from .parts import Scheduler
-
-import numpy as np
-import sounddevice as sd
 
 
 class Engine:
-    pulse: np.ndarray
 
-    def __init__(self):
-        scheduler = Scheduler()
+    def __init__(self, args_config: ArgsConfig):
+        self.scheduler = Scheduler(args_config=args_config)
 
     @classmethod
-    def start(cls, args: Namespace):
-        frequency = args.frequency
-        bpm_init = args.bpm_init
-        length_pulse = args.length_pulse
-        amplitude = args.amplitude
-        audio_devs = cls.get_audio_devs()
+    def start(cls, args: Namespace) -> "Engine":
+        args_config = ArgsConfig(
+            frequency=args.frequency,
+            bpm_init=args.bpm_init,
+            amplitude=args.amplitude,
+        )
+        engine = cls(args_config=args_config)
+        engine.scheduler.start()
+        return engine
 
-    @staticmethod
-    def get_audio_devs() -> List:
-        all_devs = sd.query_devices()
-        some_devs = list()
-        return some_devs
+    def finish(self) -> "Engine":
+        self.scheduler.finish()
+        return self
