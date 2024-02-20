@@ -3,7 +3,7 @@ Tempo {
     background: $boost;
     height: 5;
     margin: 1;
-    min-width: 50;
+    min-width: 40;
     padding: 1;
 }
 
@@ -14,7 +14,7 @@ TempoStepDisplay {
 }
 
 Button {
-    width: 14;
+    width: 10;
 }
 
 #start {
@@ -29,6 +29,12 @@ Button {
 
 #step {
     dock: right;
+    display: block;
+}
+
+#pause {
+    dock: right;
+    display: none;
 }
 
 .started {
@@ -50,5 +56,9 @@ Button {
 }
 
 .started #step {
-    visibility: hidden
+    display: none
+}
+
+.started #pause {
+    display: block
 }

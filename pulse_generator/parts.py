@@ -26,6 +26,7 @@ class Pulser:
         sharable_tempos: ShareableList,
         sharable_steps: ShareableList,
         sharable_stops: ShareableList,
+        sharable_pauses: ShareableList,
     ):
         self.pulser_id = pulser_id
         self.args_config = args_config
@@ -33,6 +34,7 @@ class Pulser:
         self.shareable_tempos = sharable_tempos
         self.shareable_steps = sharable_steps
         self.shareable_stops = sharable_stops
+        self.shareable_pauses = sharable_pauses
         self.audio_dev = audio_dev
         self.device = audio_dev["index"]
         self.sample_rate = int(audio_dev["default_samplerate"])
@@ -71,6 +73,7 @@ class Scheduler:
         self.shareable_tempos = ShareableList()
         self.shareable_steps = ShareableList()
         self.shareable_stops = ShareableList()
+        self.shareable_pauses = ShareableList()
         self.processes: List[Process] = list()
 
     def get_audio_devs(self) -> List:
@@ -93,6 +96,7 @@ class Scheduler:
         shareable_tempos: ShareableList,
         shareable_steps: ShareableList,
         shareable_stops: ShareableList,
+        shareable_pauses: ShareableList,
     ):
         dynamic_config = DynamicConfig(
             bpm=self.args_config.bpm_init, steps=self.static_config.steps_init
@@ -106,6 +110,7 @@ class Scheduler:
             sharable_tempos=shareable_tempos,
             sharable_steps=shareable_steps,
             sharable_stops=shareable_stops,
+            sharable_pauses=shareable_pauses,
         )
         scheduler = sched.scheduler(time.time, time.sleep)
         new_time = time_sync
@@ -122,13 +127,23 @@ class Scheduler:
         tempos = [self.args_config.bpm_init] * len(self.audio_devs)
         steps = [0] * len(self.audio_devs)
         stops = [False] * len(self.audio_devs)
+        pauses = [False] * len(self.audio_devs)
         shareable_tempos = ShareableList(tempos)
         shareable_steps = ShareableList(steps)
         shareable_stops = ShareableList(stops)
-        for i, dev in enumerate(self.audio_devs):
+        shareable_pauses = ShareableList(pauses)
+        for pulser_id, dev in enumerate(self.audio_devs):
             process = Process(
                 target=self.pulse_runner,
-                args=(i, time_sync, dev, shareable_tempos, shareable_steps, shareable_stops),
+                args=(
+                    pulser_id,
+                    time_sync,
+                    dev,
+                    shareable_tempos,
+                    shareable_steps,
+                    shareable_stops,
+                    shareable_pauses,
+                ),
             )
             processes.append(process)
         for process in processes:
@@ -136,6 +151,8 @@ class Scheduler:
         self.processes += processes
         self.shareable_steps = shareable_steps
         self.shareable_tempos = shareable_tempos
+        self.shareable_stops = shareable_stops
+        self.shareable_pauses = shareable_pauses
         ui = PulserApp(
             audio_devs=self.audio_devs,
             current_tempo_getters=self.create_tempo_getters(),
@@ -182,5 +199,9 @@ class Scheduler:
             process.kill()
         self.shareable_tempos.shm.close()
         self.shareable_steps.shm.close()
+        self.shareable_stops.shm.close()
+        self.shareable_pauses.shm.close()
         self.shareable_tempos.shm.unlink()
         self.shareable_steps.shm.unlink()
+        self.shareable_stops.shm.unlink()
+        self.shareable_pauses.shm.unlink()

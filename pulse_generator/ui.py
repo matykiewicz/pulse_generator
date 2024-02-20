@@ -52,11 +52,14 @@ class TempoStepDisplay(Static):
 
     def start(self) -> None:
         pass
-        #self.tempo_step_updater.resume()
+        # self.tempo_step_updater.resume()
 
     def stop(self) -> None:
         pass
-        #self.tempo_step_updater.stop()
+        # self.tempo_step_updater.stop()
+
+    def pause(self) -> None:
+        pass
 
     def step(self) -> None:
         stepped = self.stepped
@@ -94,12 +97,15 @@ class Tempo(Static):
             self.remove_class("started")
         elif button_id == "step":
             tempo_step_display.step()
+        elif button_id == "pause":
+            tempo_step_display.pause()
 
     def compose(self) -> ComposeResult:
         """Create child widgets of a stopwatch."""
         yield Button("Start", id="start", variant="success")
         yield Button("Stop", id="stop", variant="error")
         yield Button("Step", id="step")
+        yield Button("Pause", id="pause")
         yield TempoStepDisplay(
             dev_name=self.dev_name,
             current_tempo_getter=self.current_tempo_getter,
