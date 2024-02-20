@@ -19,11 +19,12 @@ Button {
 
 #start {
     dock: left;
-    display: none;
+    display: block;
 }
 
 #stop {
     dock: left;
+    display: none;
 }
 
 #step {
@@ -51,4 +52,3 @@ Button {
 .started #step {
     visibility: hidden
 }
-

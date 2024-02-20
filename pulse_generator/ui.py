@@ -14,6 +14,7 @@ class TempoStepDisplay(Static):
     tempo = reactive(0)
     stepped = reactive(0)
     stopped = reactive(False)
+    tempo_step_updater: Timer
 
     def __init__(
         self,
@@ -50,10 +51,12 @@ class TempoStepDisplay(Static):
         self.update(f"N: {self.dev_name}; T: {self.tempo}; S: {self.stepped}")
 
     def start(self) -> None:
-        self.tempo_step_updater.resume()
+        pass
+        #self.tempo_step_updater.resume()
 
     def stop(self) -> None:
-        self.tempo_step_updater.stop()
+        pass
+        #self.tempo_step_updater.stop()
 
     def step(self) -> None:
         stepped = self.stepped
@@ -94,8 +97,8 @@ class Tempo(Static):
 
     def compose(self) -> ComposeResult:
         """Create child widgets of a stopwatch."""
-        yield Button("Stop", id="stop", variant="error")
         yield Button("Start", id="start", variant="success")
+        yield Button("Stop", id="stop", variant="error")
         yield Button("Step", id="step")
         yield TempoStepDisplay(
             dev_name=self.dev_name,
@@ -140,6 +143,8 @@ class PulserApp(App):
                     current_step_setter=self.current_step_setters[i],
                 )
             )
+        for tempo in tempos:
+            tempo.add_class("started")
         yield Header()
         yield Footer()
         yield ScrollableContainer(*tempos)
