@@ -15,6 +15,7 @@ class Engine:
             frequency=args.frequency,
             bpm_init=args.bpm_init,
             amplitude=args.amplitude,
+            audio_dev_match=args.device_match,
         )
         engine = cls(args_config=args_config)
         engine.scheduler.start()

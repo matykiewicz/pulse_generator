@@ -6,11 +6,11 @@ class ArgsConfig:
     bpm_init: int
     frequency: float
     amplitude: float
+    audio_dev_match: str
 
 
 @define
 class StaticConfig:
-    audio_dev_match: str = "USB Audio"
     steps_init: int = 16
     first_start_delay: float = 2.0
 

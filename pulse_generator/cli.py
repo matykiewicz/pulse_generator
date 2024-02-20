@@ -31,6 +31,13 @@ def main() -> Engine:
         default=60,
         help="initial beats per minute (default: %(default)s)",
     )
+    parser.add_argument(
+        "-d",
+        "--device-match",
+        type=str,
+        default="USB Audio",
+        help="initial beats per minute (default: %(default)s)",
+    )
     args = parser.parse_args()
     return run(args=args)
 

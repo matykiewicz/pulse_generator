@@ -11,6 +11,7 @@ sounddevice = "^0.4.6"
 numpy = "^1.26.4"
 scipy = "^1.12.0"
 attrs = "^23.2.0"
+textual = "^0.52.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -1,3 +1,4 @@
+import logging
 import math
 import sched
 import time
@@ -93,10 +94,12 @@ class Scheduler:
         some_devs = list()
         for dev in all_devs:
             if (
-                self.static_config.audio_dev_match in dev["name"]
+                self.args_config.audio_dev_match in dev["name"]
                 and dev["max_output_channels"] > 0
             ):
+                print(f"Found {dev['name']}")
                 some_devs.append(dev)
+        logging.info(f"Found {len(some_devs)} audio devices")
         return some_devs
 
     def keyboard_runner(self):
