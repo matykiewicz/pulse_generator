@@ -1,0 +1,54 @@
+Tempo {
+    layout: horizontal;
+    background: $boost;
+    height: 5;
+    margin: 1;
+    min-width: 50;
+    padding: 1;
+}
+
+TempoStepDisplay {
+    content-align: center middle;
+    text-opacity: 60%;
+    height: 3;
+}
+
+Button {
+    width: 14;
+}
+
+#start {
+    dock: left;
+    display: none;
+}
+
+#stop {
+    dock: left;
+}
+
+#step {
+    dock: right;
+}
+
+.started {
+    text-style: bold;
+    background: $success;
+    color: $text;
+}
+
+.started TempoStepDisplay {
+    text-opacity: 100%;
+}
+
+.started #start {
+    display: none
+}
+
+.started #stop {
+    display: block
+}
+
+.started #step {
+    visibility: hidden
+}
+

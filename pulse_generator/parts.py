@@ -2,31 +2,37 @@ import logging
 import math
 import sched
 import time
-from multiprocessing import Process, Queue
-from threading import Thread
-from typing import Any, Dict, List
+from multiprocessing import Process
+from multiprocessing.shared_memory import ShareableList
+from typing import Any, Callable, Dict, List
 
 import numpy as np
 import sounddevice as sd
 from scipy import signal
 
 from .configs import ArgsConfig, DynamicConfig, StaticConfig
-from .key import is_keypress_readable, read_single_keypress
+from .ui import PulserApp
 
 
 class Pulser:
 
     def __init__(
         self,
+        pulser_id: int,
         args_config: ArgsConfig,
         static_config: StaticConfig,
         audio_dev: Dict[str, Any],
         dynamic_config: DynamicConfig,
-        command_queue: Queue,
+        sharable_tempos: ShareableList,
+        sharable_steps: ShareableList,
+        sharable_stops: ShareableList,
     ):
+        self.pulser_id = pulser_id
         self.args_config = args_config
         self.static_config = static_config
-        self.command_queue = command_queue
+        self.shareable_tempos = sharable_tempos
+        self.shareable_steps = sharable_steps
+        self.shareable_stops = sharable_stops
         self.audio_dev = audio_dev
         self.device = audio_dev["index"]
         self.sample_rate = int(audio_dev["default_samplerate"])
@@ -54,25 +60,7 @@ class Pulser:
             sd.play(self.pulse, samplerate=self.sample_rate, blocking=True)
             self.dynamic_config.pause = self.dynamic_config.part
         self.dynamic_config.step += 1
-
-
-class Keyboard:
-    def __init__(self, static_config: StaticConfig, key_queue: Queue):
-        self.static_config = static_config
-        self.key_queue = key_queue
-
-    def read(self) -> str:
-        if is_keypress_readable():
-            ch = read_single_keypress()[0]
-        else:
-            time.sleep(0.1)
-            ch = "x"
-        self.key_queue.put(ch)
-        return ch
-
-
-class Display:
-    pass
+        self.shareable_steps[self.pulser_id] = self.dynamic_config.step
 
 
 class Scheduler:
@@ -80,13 +68,9 @@ class Scheduler:
         self.args_config = args_config
         self.static_config = StaticConfig()
         self.audio_devs = self.get_audio_devs()
-        self.key_queue = Queue()
-        self.keyboard = Keyboard(
-            static_config=self.static_config,
-            key_queue=self.key_queue,
-        )
-        self.stop_thread = False
-        self.command_queues: List[Queue] = list()
+        self.shareable_tempos = ShareableList()
+        self.shareable_steps = ShareableList()
+        self.shareable_stops = ShareableList()
         self.processes: List[Process] = list()
 
     def get_audio_devs(self) -> List:
@@ -97,29 +81,31 @@ class Scheduler:
                 self.args_config.audio_dev_match in dev["name"]
                 and dev["max_output_channels"] > 0
             ):
-                print(f"Found {dev['name']}")
                 some_devs.append(dev)
         logging.info(f"Found {len(some_devs)} audio devices")
         return some_devs
 
-    def keyboard_runner(self):
-        while not self.stop_thread:
-            ch = self.keyboard.read()
-            if ch == "\x03":
-                self.stop_thread = True
-
     def pulse_runner(
-        self, time_sync: float, audio_dev: Dict[str, Any], command_queue: Queue
+        self,
+        pulser_id: int,
+        time_sync: float,
+        audio_dev: Dict[str, Any],
+        shareable_tempos: ShareableList,
+        shareable_steps: ShareableList,
+        shareable_stops: ShareableList,
     ):
         dynamic_config = DynamicConfig(
             bpm=self.args_config.bpm_init, steps=self.static_config.steps_init
         )
         pulser = Pulser(
+            pulser_id=pulser_id,
             args_config=self.args_config,
             static_config=self.static_config,
             dynamic_config=dynamic_config,
             audio_dev=audio_dev,
-            command_queue=command_queue,
+            sharable_tempos=shareable_tempos,
+            sharable_steps=shareable_steps,
+            sharable_stops=shareable_stops,
         )
         scheduler = sched.scheduler(time.time, time.sleep)
         new_time = time_sync
@@ -131,24 +117,70 @@ class Scheduler:
             scheduler.run(blocking=True)
 
     def start(self):
-        thread = Thread(target=self.keyboard_runner)
         time_sync = math.ceil(time.time()) + self.static_config.first_start_delay
         processes: List[Process] = list()
-        command_queues: List[Queue] = list()
-        for dev in self.audio_devs:
-            command_queue = Queue()
+        tempos = [self.args_config.bpm_init] * len(self.audio_devs)
+        steps = [0] * len(self.audio_devs)
+        stops = [False] * len(self.audio_devs)
+        shareable_tempos = ShareableList(tempos)
+        shareable_steps = ShareableList(steps)
+        shareable_stops = ShareableList(stops)
+        for i, dev in enumerate(self.audio_devs):
             process = Process(
-                target=self.pulse_runner, args=(time_sync, dev, command_queue)
+                target=self.pulse_runner,
+                args=(i, time_sync, dev, shareable_tempos, shareable_steps, shareable_stops),
             )
             processes.append(process)
-            command_queues.append(command_queue)
         for process in processes:
             process.start()
         self.processes += processes
-        self.command_queues += command_queues
-        thread.start()
+        self.shareable_steps = shareable_steps
+        self.shareable_tempos = shareable_tempos
+        ui = PulserApp(
+            audio_devs=self.audio_devs,
+            current_tempo_getters=self.create_tempo_getters(),
+            current_step_getters=self.create_step_getters(),
+            current_tempo_setters=self.create_tempo_setters(),
+            current_step_setters=self.create_step_setters(),
+        )
+        ui.run()
+
+    def create_tempo_setters(self) -> List[Callable]:
+        tempo_setters = list()
+        for i in range(len(self.shareable_tempos)):
+
+            def tempo_setter(x):
+                self.shareable_tempos[i] = x
+
+            tempo_setters.append(tempo_setter)
+        return tempo_setters
+
+    def create_step_setters(self) -> List[Callable]:
+        step_setters = list()
+        for i in range(len(self.shareable_steps)):
+
+            def step_setter(x):
+                self.shareable_steps[i] = x
+
+            step_setters.append(step_setter)
+        return step_setters
+
+    def create_tempo_getters(self) -> List[Callable]:
+        tempo_getters = list()
+        for i in range(len(self.shareable_tempos)):
+            tempo_getters.append(lambda: self.shareable_tempos[i])
+        return tempo_getters
+
+    def create_step_getters(self) -> List[Callable]:
+        step_getters = list()
+        for i in range(len(self.shareable_steps)):
+            step_getters.append(lambda: self.shareable_steps[i])
+        return step_getters
 
     def finish(self):
         for process in self.processes:
             process.kill()
-        self.stop_thread = True
+        self.shareable_tempos.shm.close()
+        self.shareable_steps.shm.close()
+        self.shareable_tempos.shm.unlink()
+        self.shareable_steps.shm.unlink()
