@@ -269,14 +269,14 @@ class UI(App):
 
     CSS_PATH = "ui.tcss"
     BINDINGS = [
-        ("q", "toggle_ss_1", "S/S D1"),
-        ("w", "toggle_ss_2", "S/S D2"),
-        ("e", "toggle_ss_3", "S/S D3"),
-        ("r", "toggle_ss_4", "S/S D4"),
-        ("a", "toggle_ps_1", "P/S D1"),
-        ("s", "toggle_ps_2", "P/S D2"),
-        ("d", "toggle_ps_3", "P/S D3"),
-        ("f", "toggle_ps_4", "P/S D4"),
+        ("a", "toggle_ss_1", "S/S D1"),
+        ("b", "toggle_ss_2", "S/S D2"),
+        ("c", "toggle_ss_3", "S/S D3"),
+        ("2", "toggle_ss_4", "S/S D4"),
+        ("g", "toggle_ps_1", "P/S D1"),
+        ("h", "toggle_ps_2", "P/S D2"),
+        ("i", "toggle_ps_3", "P/S D3"),
+        ("5", "toggle_ps_4", "P/S D4"),
     ]
 
     def __init__(
