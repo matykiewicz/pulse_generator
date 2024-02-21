@@ -21,7 +21,7 @@ class PulserDisplay(Static):
     step_val = reactive(0)
     waits_val = reactive(0)
     wait_val = reactive(0)
-    tempo_step_wait_updater: Timer
+    tempo_step_wait_updater: Optional[Timer] = None
 
     def __init__(
         self,
@@ -58,6 +58,8 @@ class PulserDisplay(Static):
     def set_interval_on_time(self):
         if self.dev_name == MASTER_NAME:
             interval = 1 / (self.tempo_val / 60)
+            if self.tempo_step_wait_updater is not None:
+                self.tempo_step_wait_updater.stop()
             self.tempo_step_wait_updater = self.set_interval(
                 interval, self.run_many_schedules, pause=False
             )
@@ -73,12 +75,14 @@ class PulserDisplay(Static):
         step_val = self.step_val
         step_val = step_val % self.steps_val
         step_val += 1
+        # -- REMOVE PAUSE -- #
         if self.wait_val < self.waits_val and step_val == 16:
             wait_val = self.wait_val
             wait_val += 1
             self.wait_val = wait_val
             if self.wait_val == self.waits_val:
                 self.pulser.stop_skipping()
+        # -- START/STOP/PAUSE -- #
         if self.pulser and step_val == 16 and len(self.commands) > 0:
             command = self.commands.pop()
             if command == "stop":
@@ -92,6 +96,7 @@ class PulserDisplay(Static):
                 self.pulser.start_skipping()
             else:
                 self.commands.append(command)
+        # -- SINGLE STEP -- #
         if (
             self.pulser
             and self.pulser.skip
@@ -100,6 +105,10 @@ class PulserDisplay(Static):
         ):
             command = self.commands.pop()
             self.pulser.play()
+        # -- TEMPO CHANGE --
+        if step_val == 16 and self.tempo_val != self.tempos_val:
+            self.tempo_val = self.tempos_val
+            self.set_interval_on_time()
         self.step_val = step_val
 
     def update_all(self):
@@ -145,6 +154,18 @@ class PulserDisplay(Static):
             return True
         else:
             return False
+
+    def tempo_up(self, up: int) -> bool:
+        tempos_val = self.tempos_val
+        tempos_val += up
+        self.tempos_val = tempos_val
+        return True
+
+    def tempo_down(self, down: int) -> bool:
+        tempos_val = self.tempos_val
+        tempos_val -= down
+        self.tempos_val = tempos_val
+        return True
 
 
 class PulserUI(Static):
@@ -225,6 +246,15 @@ class MasterUI(Static):
             pulser_uis.append(pulser_ui)
         self.pulser_uis = pulser_uis
         self.many_schedules = many_schedules
+        self.pulser_display = PulserDisplay(
+            dev_name=MASTER_NAME,
+            get_time_sync=self.get_time_sync,
+            tempos_init=self.external_config.tempos_init,
+            steps_init=self.external_config.steps_init,
+            waits_init=self.external_config.waits_init,
+            many_schedules=self.many_schedules,
+            pulser=None,
+        )
 
     def get_time_sync(self):
         return self.time_sync
@@ -253,15 +283,7 @@ class MasterUI(Static):
         yield Button("Stop", id="stop", variant="error")
         yield Button("Step", id="step")
         yield Button("Pause", id="pause")
-        yield PulserDisplay(
-            dev_name=MASTER_NAME,
-            get_time_sync=self.get_time_sync,
-            tempos_init=self.external_config.tempos_init,
-            steps_init=self.external_config.steps_init,
-            waits_init=self.external_config.waits_init,
-            many_schedules=self.many_schedules,
-            pulser=None,
-        )
+        yield self.pulser_display
 
 
 class UI(App):
@@ -277,6 +299,8 @@ class UI(App):
         ("h", "toggle_ps_2", "P/S D2"),
         ("i", "toggle_ps_3", "P/S D3"),
         ("5", "toggle_ps_4", "P/S D4"),
+        ("9", "tempo_up", "T UP"),
+        ("7", "tempo_down", "T DO"),
     ]
 
     def __init__(
@@ -301,6 +325,18 @@ class UI(App):
         all_uis = self.master_ui.get_all_uis()
         yield Footer()
         yield ScrollableContainer(*all_uis)
+
+    def action_tempo_up(self) -> None:
+        if self.master_ui is not None:
+            self.master_ui.pulser_display.tempo_up(self.internal_config.speed_diff)
+            for pulser_ui in self.master_ui.pulser_uis:
+                pulser_ui.pulser_display.tempo_up(self.internal_config.speed_diff)
+
+    def action_tempo_down(self) -> None:
+        if self.master_ui is not None:
+            self.master_ui.pulser_display.tempo_down(self.internal_config.speed_diff)
+            for pulser_ui in self.master_ui.pulser_uis:
+                pulser_ui.pulser_display.tempo_down(self.internal_config.speed_diff)
 
     def action_toggle_ss_1(self) -> None:
         if self.master_ui is not None:

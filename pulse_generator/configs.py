@@ -14,3 +14,4 @@ class ExternalConfig:
 @define
 class InternalConfig:
     first_start_delay: float = 2.0
+    speed_diff: int = 10
