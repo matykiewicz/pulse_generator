@@ -1,26 +1,66 @@
+import logging
 from argparse import Namespace
+from typing import List
 
-from .configs import ArgsConfig
-from .parts import Scheduler
+import sounddevice as sd
+
+from .configs import ExternalConfig
+from .pulser import Pulser
+from .ui import UI
 
 
 class Engine:
 
-    def __init__(self, args_config: ArgsConfig):
-        self.scheduler = Scheduler(args_config=args_config)
+    def __init__(self, external_config: ExternalConfig):
+        self.external_config = external_config
+        self.audio_devs = self.get_audio_devs()
+        self.pulser_devs = self.get_pulser_devs()
+        self.ui = self.get_ui()
 
     @classmethod
-    def start(cls, args: Namespace) -> "Engine":
-        args_config = ArgsConfig(
+    def run(cls, args: Namespace, blocking: bool) -> "Engine":
+        external_config = ExternalConfig(
             frequency=args.frequency,
-            bpm_init=args.bpm_init,
             amplitude=args.amplitude,
             audio_dev_match=args.device_match,
+            tempos_init=args.tempos_init,
+            steps_init=args.steps_init,
+            waits_init=args.waits_init,
         )
-        engine = cls(args_config=args_config)
-        engine.scheduler.start()
+        engine = cls(external_config=external_config)
+        if blocking:
+            engine.ui.run()
         return engine
 
+    def get_pulser_devs(self) -> List[Pulser]:
+        pulser_devs: List[Pulser] = list()
+        for pulser_id, audio_dev in enumerate(self.audio_devs):
+            pulser = Pulser(
+                pulser_id=pulser_id,
+                external_config=self.external_config,
+                audio_dev=audio_dev,
+            )
+            pulser_devs.append(pulser)
+        return pulser_devs
+
+    def get_ui(self) -> UI:
+        ui = UI(
+            pulser_devs=self.pulser_devs,
+            external_config=self.external_config,
+        )
+        return ui
+
+    def get_audio_devs(self) -> List:
+        all_devs = sd.query_devices()
+        some_devs = list()
+        for dev in all_devs:
+            if (
+                self.external_config.audio_dev_match in dev["name"]
+                and dev["max_output_channels"] > 0
+            ):
+                some_devs.append(dev)
+        logging.info(f"Found {len(some_devs)} audio devices")
+        return some_devs
+
     def finish(self) -> "Engine":
-        self.scheduler.finish()
         return self

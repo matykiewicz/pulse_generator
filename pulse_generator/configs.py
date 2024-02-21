@@ -2,25 +2,15 @@ from attrs import define
 
 
 @define
-class ArgsConfig:
-    bpm_init: int
+class ExternalConfig:
     frequency: float
     amplitude: float
     audio_dev_match: str
+    tempos_init: int
+    steps_init: int
+    waits_init: int
 
 
 @define
-class StaticConfig:
-    steps_init: int = 16
+class InternalConfig:
     first_start_delay: float = 2.0
-
-
-@define
-class DynamicConfig:
-    bpm: int = 60
-    steps: int = 16
-    wait: int = 1
-    step: int = 0
-    stop: bool = False
-    part: int = 0
-    pause: int = 0

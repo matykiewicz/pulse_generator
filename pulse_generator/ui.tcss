@@ -1,20 +1,11 @@
-Tempo {
-    layout: horizontal;
-    background: $boost;
-    height: 5;
-    margin: 1;
-    min-width: 40;
-    padding: 1;
-}
 
-TempoStepDisplay {
+PulserDisplay {
     content-align: center middle;
-    text-opacity: 60%;
     height: 3;
 }
 
 Button {
-    width: 10;
+    width: 5;
 }
 
 #start {
@@ -41,10 +32,6 @@ Button {
     text-style: bold;
     background: $success;
     color: $text;
-}
-
-.started TempoStepDisplay {
-    text-opacity: 100%;
 }
 
 .started #start {

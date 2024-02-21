@@ -5,6 +5,7 @@ from pulse_generator.engine import Engine
 
 
 def test_main(command_line_args):
-    engine: Engine = main()
+    engine: Engine = main(blocking=False)
+    engine.ui.run()
     time.sleep(200)
     engine.finish()
