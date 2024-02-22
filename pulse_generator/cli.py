@@ -14,14 +14,14 @@ def main(blocking: bool) -> Engine:
         "-f",
         "--frequency",
         type=float,
-        default=10,
+        default=200,
         help="frequency in Hz (default: %(default)s)",
     )
     parser.add_argument(
         "-a",
         "--amplitude",
         type=float,
-        default=100.0,
+        default=300.0,
         help="amplitude (default: %(default)s)",
     )
     parser.add_argument(
