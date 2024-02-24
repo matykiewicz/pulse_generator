@@ -157,20 +157,20 @@ class PulserDisplay(Static):
         return True
 
     def tempo_up(self, up: int) -> bool:
+        tempos_val = self.tempos_val
+        tempos_val += up
+        self.tempos_val = tempos_val
         if self.pulser.tempo_in_queue.empty():
-            tempos_val = self.tempos_val
-            tempos_val += up
-            self.tempos_val = tempos_val
             self.pulser.tempo_in_queue.put(self.tempos_val)
             return True
         else:
             return False
 
     def tempo_down(self, down: int) -> bool:
+        tempos_val = self.tempos_val
+        tempos_val -= down
+        self.tempos_val = tempos_val
         if self.pulser.tempo_in_queue.empty():
-            tempos_val = self.tempos_val
-            tempos_val -= down
-            self.tempos_val = tempos_val
             self.pulser.tempo_in_queue.put(self.tempos_val)
             return True
         else:

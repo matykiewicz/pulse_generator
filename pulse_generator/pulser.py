@@ -39,6 +39,7 @@ class Pulser:
         self.tempo_in_queue: Queue[int] = Queue()
         self.tempo_out_queue: Queue[int] = Queue()
         self.pause_in_queue: Queue[str] = Queue()
+        self.sound_in_queue: Queue[str] = Queue()
         self.steps = self.external_config.steps_init
         self.tempo_bpm = self.external_config.tempos_init
         self.time_sync: float = time_sync
@@ -59,28 +60,21 @@ class Pulser:
         self.tempo_bpm = round(1 / (self.interval_sec / 60))
 
     def play_sound(self):
-        sd.play(
-            self.pulse_loud,
-            samplerate=self.sample_rate,
-            blocking=True,
-            device=self.device_name,
-            blocksize=self.pulse_loud.shape[0],
-            clip_off=True,
-            latency=self.internal_config.sd_latency,
-        )
+        if self.sound_in_queue.empty():
+            self.sound_in_queue.put("sound")
 
     def callback(self, out_data, frames, ts, status):
         self.run_tempo_in_command()
+        if not self.sound_in_queue.empty():
+            sound = self.sound_in_queue.get()
+            out_data[:] = self.pulse_loud
+            return None
         time_now = time.time()
         if time_now >= (self.next_schedule - self.internal_config.time_drift):
             if self.not_skip:
                 out_data[:] = self.pulse_loud
-                out_data[0] = self.internal_config.min_wave_val
-                out_data[-1] = self.internal_config.min_wave_val
             else:
-                out_data[:] = 0
-                out_data[0] = self.internal_config.min_wave_val
-                out_data[-1] = self.internal_config.min_wave_val
+                out_data[:] = self.internal_config.min_wave_val
             self.next_schedule += self.interval_sec
             if self.step == self.steps:
                 self.run_pause_command()
@@ -88,13 +82,11 @@ class Pulser:
             self.step = self.step % self.steps
             self.step += 1
         else:
-            out_data[:] = 0
-            out_data[0] = self.internal_config.min_wave_val
-            out_data[-1] = self.internal_config.min_wave_val
+            out_data[:] = self.internal_config.min_wave_val
 
     def start_schedule(self):
         pid = os.getpid()
-        if getattr(os, "sched_setaffinity", None):
+        if getattr(os, "sched_setaffinity", None) and self.internal_config.set_cpu_aff:
             os.sched_setaffinity(pid, {self.pulser_id + 1})  # type: ignore
         stream = sd.OutputStream(
             device=self.device_id,

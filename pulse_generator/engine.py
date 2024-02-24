@@ -20,7 +20,7 @@ class Engine:
         self.audio_devs = self.get_audio_devs()
         self.pulser_devs = self.get_pulser_devs()
         self.ui = self.get_ui()
-        if getattr(os, "sched_setaffinity", None):
+        if getattr(os, "sched_setaffinity", None) and self.internal_config.set_cpu_aff:
             pid = os.getpid()
             os.sched_setaffinity(pid, {0})  # type: ignore
 
