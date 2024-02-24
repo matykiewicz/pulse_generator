@@ -13,7 +13,10 @@ class ExternalConfig:
 
 @define
 class InternalConfig:
-    first_start_delay: float = 2.0
-    speed_diff: int = 60
+    first_start_delay: float = 4.0
+    speed_diff: int = 10
     time_drift: float = 0.005
     sd_latency: float = 0.001
+    min_wave_val: float = 0.002
+    main_python_sleep_s: float = 2.0
+    main_sd_sleep_ms: float = 1

@@ -28,14 +28,14 @@ def main(blocking: bool) -> Engine:
         "-t",
         "--tempos-init",
         type=int,
-        default=120,
+        default=60,
         help="initial beats per minute (default: %(default)s)",
     )
     parser.add_argument(
         "-s",
         "--steps-init",
         type=int,
-        default=16,
+        default=4,
         help="initial steps per part (default: %(default)s)",
     )
     parser.add_argument(

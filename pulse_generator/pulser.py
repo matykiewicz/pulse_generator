@@ -37,14 +37,14 @@ class Pulser:
         self.not_skip: bool = True
         self.interval_sec: float = 0.0
         self.tempo_in_queue: Queue[int] = Queue()
+        self.tempo_out_queue: Queue[int] = Queue()
         self.pause_in_queue: Queue[str] = Queue()
         self.steps = self.external_config.steps_init
         self.tempo_bpm = self.external_config.tempos_init
         self.time_sync: float = time_sync
-        self.total_time_for_steps: float = 0.0
         self.step: int = 1
         self.reset_interval_and_tempo()
-        self.next_schedule = self.time_sync + self.total_time_for_steps
+        self.next_schedule = self.time_sync
         self.process = Process(target=self.start_schedule)
         logging.info(
             f"Created {self.device_name} pulser with time sync {self.time_sync}"
@@ -57,7 +57,6 @@ class Pulser:
     def reset_interval_and_tempo(self):
         self.interval_sec = round(1 / (self.tempo_bpm / 60), 3)
         self.tempo_bpm = round(1 / (self.interval_sec / 60))
-        self.total_time_for_steps = self.steps * self.interval_sec
 
     def play_sound(self):
         sd.play(
@@ -71,17 +70,17 @@ class Pulser:
         )
 
     def callback(self, out_data, frames, ts, status):
+        self.run_tempo_in_command()
         time_now = time.time()
         if time_now >= (self.next_schedule - self.internal_config.time_drift):
-            self.run_tempo_in_command()
             if self.not_skip:
                 out_data[:] = self.pulse_loud
-                out_data[0] = 0.001
-                out_data[-1] = 0.001
+                out_data[0] = self.internal_config.min_wave_val
+                out_data[-1] = self.internal_config.min_wave_val
             else:
                 out_data[:] = 0
-                out_data[0] = 0.001
-                out_data[-1] = 0.001
+                out_data[0] = self.internal_config.min_wave_val
+                out_data[-1] = self.internal_config.min_wave_val
             self.next_schedule += self.interval_sec
             if self.step == self.steps:
                 self.run_pause_command()
@@ -90,8 +89,8 @@ class Pulser:
             self.step += 1
         else:
             out_data[:] = 0
-            out_data[0] = 0.001
-            out_data[-1] = 0.001
+            out_data[0] = self.internal_config.min_wave_val
+            out_data[-1] = self.internal_config.min_wave_val
 
     def start_schedule(self):
         pid = os.getpid()
@@ -107,8 +106,8 @@ class Pulser:
         )
         with stream:
             while True:
-                time.sleep(1)
-                sd.sleep(1)
+                time.sleep(self.internal_config.main_python_sleep_s)
+                sd.sleep(self.internal_config.main_sd_sleep_ms)
 
     def run_tempo_in_command(self):
         if not self.tempo_in_queue.empty():
@@ -116,6 +115,8 @@ class Pulser:
 
     def run_tempo_out_command(self):
         self.reset_interval_and_tempo()
+        if self.tempo_out_queue.empty():
+            self.tempo_out_queue.put(self.tempo_bpm)
 
     def run_pause_command(self):
         if not self.pause_in_queue.empty():

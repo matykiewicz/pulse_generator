@@ -44,7 +44,6 @@ class PulserDisplay(Static):
         self.commands: List[str] = list()
         self.pulser = pulser
         self.interval_sec: float = 0.0
-        self.total_time_for_steps: float = 0.0
         self.reset_interval_and_tempo()
         self.next_schedule = self.pulser.next_schedule
         self.set_timer(
@@ -55,10 +54,8 @@ class PulserDisplay(Static):
     def reset_interval_and_tempo(self):
         self.interval_sec = round(1 / (self.tempo_val / 60), 3)
         self.tempos_val = round(1 / (self.interval_sec / 60))
-        self.total_time_for_steps = self.steps_val * self.interval_sec
 
     def run_schedule(self) -> None:
-        self.run_tempo_in_command()
         if self.step_val == self.steps_val:
             self.run_wait_command()
             self.run_pause_start_stop_command()
@@ -94,18 +91,13 @@ class PulserDisplay(Static):
                 self.stopped = True
             elif command == "start":
                 self.stopped = False
-            elif command == "step":
-                raise NotImplementedError()
         if self.stopped and self.pulser.pause_in_queue.empty():
             self.pulser.pause_in_queue.put("pause")
 
-    def run_tempo_in_command(self):
-        if self.tempo_val != self.tempos_val and self.pulser.tempo_in_queue.empty():
-            self.pulser.tempo_in_queue.put(self.tempos_val)
-
     def run_tempo_out_command(self):
-        self.tempo_val = self.tempos_val
-        self.reset_interval_and_tempo()
+        if not self.pulser.tempo_out_queue.empty():
+            self.tempo_val = self.pulser.tempo_out_queue.get()
+            self.reset_interval_and_tempo()
 
     def update_all(self):
         self.update(
@@ -161,26 +153,25 @@ class PulserDisplay(Static):
             return False
 
     def step(self) -> bool:
-        if len(self.commands) == 0:
-            self.commands.append("step")
-            return True
-        else:
-            return False
+        self.pulser.play_sound()
+        return True
 
     def tempo_up(self, up: int) -> bool:
         if self.pulser.tempo_in_queue.empty():
             tempos_val = self.tempos_val
             tempos_val += up
             self.tempos_val = tempos_val
+            self.pulser.tempo_in_queue.put(self.tempos_val)
             return True
         else:
-            return True
+            return False
 
     def tempo_down(self, down: int) -> bool:
         if self.pulser.tempo_in_queue.empty():
             tempos_val = self.tempos_val
             tempos_val -= down
             self.tempos_val = tempos_val
+            self.pulser.tempo_in_queue.put(self.tempos_val)
             return True
         else:
             return False
