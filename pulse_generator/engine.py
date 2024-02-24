@@ -20,9 +20,9 @@ class Engine:
         self.audio_devs = self.get_audio_devs()
         self.pulser_devs = self.get_pulser_devs()
         self.ui = self.get_ui()
-        pid = os.getpid()
         if getattr(os, "sched_setaffinity", None):
-            os.sched_setaffinity(pid, {0})
+            pid = os.getpid()
+            os.sched_setaffinity(pid, {0})  # type: ignore
 
     @classmethod
     def run(cls, args: Namespace, blocking: bool) -> "Engine":

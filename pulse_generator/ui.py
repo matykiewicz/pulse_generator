@@ -28,10 +28,12 @@ class PulserDisplay(Static):
         waits_init: int,
         pulser: Pulser,
         pause_button: Button,
+        stop_button: Button,
     ):
         super().__init__()
         self.internal_config = InternalConfig()
         self.pause_button = pause_button
+        self.stop_button = stop_button
         self.dev_name = dev_name
         self.tempos_val = tempos_init
         self.tempo_val = tempo_init
@@ -41,14 +43,14 @@ class PulserDisplay(Static):
         self.wait_val = waits_init
         self.commands: List[str] = list()
         self.pulser = pulser
-        self.interval_sec = 0
-        self.total_time_for_steps = 0
+        self.interval_sec: float = 0.0
+        self.total_time_for_steps: float = 0.0
         self.reset_interval_and_tempo()
         self.next_schedule = self.pulser.next_schedule
-        # self.set_timer(
-        #    delay=self.next_schedule - time.time() - self.internal_config.time_drift,
-        #    callback=self.run_schedule,
-        # )
+        self.set_timer(
+            delay=self.next_schedule - time.time() - self.internal_config.time_drift,
+            callback=self.run_schedule,
+        )
 
     def reset_interval_and_tempo(self):
         self.interval_sec = round(1 / (self.tempo_val / 60), 3)
@@ -56,38 +58,38 @@ class PulserDisplay(Static):
         self.total_time_for_steps = self.steps_val * self.interval_sec
 
     def run_schedule(self) -> None:
+        self.run_tempo_in_command()
+        if self.step_val == self.steps_val:
+            self.run_wait_command()
+            self.run_pause_start_stop_command()
         step_val = self.step_val
         step_val = step_val % self.steps_val
         step_val += 1
-        # self.step_val = step_val
-        self.sync_step()
-        if self.step_val == self.steps_val:
-            self.execute_wait()
-            self.execute_command()
+        self.step_val = step_val
+        if self.step_val == 1:
+            self.run_tempo_out_command()
         self.next_schedule += self.interval_sec
-        # self.set_timer(
-        #    delay=self.next_schedule - time.time() - self.internal_config.time_drift,
-        #    callback=self.run_schedule,
-        # )
+        self.set_timer(
+            delay=self.next_schedule - time.time() - self.internal_config.time_drift,
+            callback=self.run_schedule,
+        )
 
-    def execute_wait(self):
+    def run_wait_command(self):
         if self.pulser.pause_in_queue.empty() and self.wait_val < self.waits_val:
             wait_val = self.wait_val
             wait_val += 1
+            if wait_val == self.waits_val:
+                self.pause_button.disabled = False
+                self.stop_button.disabled = False
+                if not self.pulser.pause_in_queue.empty():
+                    self.pulser.pause_in_queue.get()
             self.wait_val = wait_val
 
-    def sync_step(self):
-        if not self.pulser.step_out_queue.empty():
-            self.step_val = self.pulser.step_out_queue.get()
-
-    def execute_command(self):
+    def run_pause_start_stop_command(self):
         if len(self.commands) > 0:
             command = self.commands.pop()
             if command == "pause":
                 self.wait_val = 0
-                if self.pulser.pause_in_queue.empty():
-                    for i in range(self.waits_val):
-                        self.pulser.pause_in_queue.put("pause")
             elif command == "stop":
                 self.stopped = True
             elif command == "start":
@@ -96,6 +98,14 @@ class PulserDisplay(Static):
                 raise NotImplementedError()
         if self.stopped and self.pulser.pause_in_queue.empty():
             self.pulser.pause_in_queue.put("pause")
+
+    def run_tempo_in_command(self):
+        if self.tempo_val != self.tempos_val and self.pulser.tempo_in_queue.empty():
+            self.pulser.tempo_in_queue.put(self.tempos_val)
+
+    def run_tempo_out_command(self):
+        self.tempo_val = self.tempos_val
+        self.reset_interval_and_tempo()
 
     def update_all(self):
         self.update(
@@ -125,20 +135,30 @@ class PulserDisplay(Static):
     def start(self) -> bool:
         if len(self.commands) == 0:
             self.commands.append("start")
+            if not self.pulser.pause_in_queue.empty():
+                self.pulser.pause_in_queue.get()
             return True
         else:
             return False
 
     def stop(self) -> bool:
-        if len(self.commands) == 0:
+        if len(self.commands) == 0 and self.pulser.pause_in_queue.empty():
             self.commands.append("stop")
+            self.pulser.pause_in_queue.put("pause")
             return True
         else:
             return False
 
     def pause(self) -> bool:
-        self.pulser.pause_in_queue.put("pause")
-        return True
+        if len(self.commands) == 0 and self.pulser.pause_in_queue.empty():
+            self.commands.append("pause")
+            self.pause_button.disabled = True
+            self.stop_button.disabled = True
+            for i in range(self.waits_val):
+                self.pulser.pause_in_queue.put("pause")
+            return True
+        else:
+            return False
 
     def step(self) -> bool:
         if len(self.commands) == 0:
@@ -148,16 +168,22 @@ class PulserDisplay(Static):
             return False
 
     def tempo_up(self, up: int) -> bool:
-        tempos_val = self.tempos_val
-        tempos_val += up
-        self.tempos_val = tempos_val
-        return True
+        if self.pulser.tempo_in_queue.empty():
+            tempos_val = self.tempos_val
+            tempos_val += up
+            self.tempos_val = tempos_val
+            return True
+        else:
+            return True
 
     def tempo_down(self, down: int) -> bool:
-        tempos_val = self.tempos_val
-        tempos_val -= down
-        self.tempos_val = tempos_val
-        return True
+        if self.pulser.tempo_in_queue.empty():
+            tempos_val = self.tempos_val
+            tempos_val -= down
+            self.tempos_val = tempos_val
+            return True
+        else:
+            return False
 
 
 class PulserUI(Static):
@@ -178,6 +204,7 @@ class PulserUI(Static):
         self.steps_init = steps_init
         self.waits_init = waits_init
         self.pause_button = Button("Pause", id="pause")
+        self.stop_button = Button("Stop", id="stop", variant="error")
         self.pulser_display = PulserDisplay(
             dev_name=self.dev_name,
             tempos_init=self.tempos_init,
@@ -186,6 +213,7 @@ class PulserUI(Static):
             waits_init=self.waits_init,
             pulser=self.pulser,
             pause_button=self.pause_button,
+            stop_button=self.stop_button,
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -201,14 +229,13 @@ class PulserUI(Static):
         elif button_id == "step":
             pulser_display.step()
         elif button_id == "pause":
-            self.pulser.pause_in_queue.put("pause")
             pulser_display.pause()
 
     def compose(self) -> ComposeResult:
         """Create child widgets of a stopwatch."""
         yield Button("Start", id="start", variant="success")
-        yield Button("Stop", id="stop", variant="error")
         yield Button("Step", id="step")
+        yield self.stop_button
         yield self.pause_button
         yield self.pulser_display
 

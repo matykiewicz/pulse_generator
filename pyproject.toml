@@ -26,3 +26,9 @@ matplotlib = "^3.8.3"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+files = "pulse_generator, tests"
+ignore_missing_imports = true
+check_untyped_defs = true
+

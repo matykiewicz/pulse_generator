@@ -34,16 +34,15 @@ class Pulser:
             2 * np.pi * external_config.frequency * axis_x
         )
         self.pulse_quiet = np.zeros((self.min_length, 1), dtype=np.float32)
-        self.not_skip = True
-        self.interval_sec = 0
-        self.tempo_in_queue = Queue()
-        self.pause_in_queue = Queue()
-        self.stop_in_queue = Queue()
+        self.not_skip: bool = True
+        self.interval_sec: float = 0.0
+        self.tempo_in_queue: Queue[int] = Queue()
+        self.pause_in_queue: Queue[str] = Queue()
         self.steps = self.external_config.steps_init
         self.tempo_bpm = self.external_config.tempos_init
-        self.time_sync = time_sync
-        self.total_time_for_steps = 0
-        self.step = 1
+        self.time_sync: float = time_sync
+        self.total_time_for_steps: float = 0.0
+        self.step: int = 1
         self.reset_interval_and_tempo()
         self.next_schedule = self.time_sync + self.total_time_for_steps
         self.process = Process(target=self.start_schedule)
@@ -74,24 +73,30 @@ class Pulser:
     def callback(self, out_data, frames, ts, status):
         time_now = time.time()
         if time_now >= (self.next_schedule - self.internal_config.time_drift):
+            self.run_tempo_in_command()
             if self.not_skip:
                 out_data[:] = self.pulse_loud
+                out_data[0] = 0.001
+                out_data[-1] = 0.001
             else:
                 out_data[:] = 0
+                out_data[0] = 0.001
+                out_data[-1] = 0.001
             self.next_schedule += self.interval_sec
+            if self.step == self.steps:
+                self.run_pause_command()
+                self.run_tempo_out_command()
             self.step = self.step % self.steps
             self.step += 1
-            if self.step == self.steps:
-                self.run_commands()
         else:
-            time.sleep(0.001)
             out_data[:] = 0
-            time.sleep(0.001)
+            out_data[0] = 0.001
+            out_data[-1] = 0.001
 
     def start_schedule(self):
         pid = os.getpid()
         if getattr(os, "sched_setaffinity", None):
-            os.sched_setaffinity(pid, {self.pulser_id + 1})
+            os.sched_setaffinity(pid, {self.pulser_id + 1})  # type: ignore
         stream = sd.OutputStream(
             device=self.device_id,
             samplerate=self.sample_rate,
@@ -105,12 +110,16 @@ class Pulser:
                 time.sleep(1)
                 sd.sleep(1)
 
-    def run_commands(self):
+    def run_tempo_in_command(self):
+        if not self.tempo_in_queue.empty():
+            self.tempo_bpm = self.tempo_in_queue.get()
+
+    def run_tempo_out_command(self):
+        self.reset_interval_and_tempo()
+
+    def run_pause_command(self):
         if not self.pause_in_queue.empty():
             self.pause_in_queue.get()
             self.not_skip = False
         else:
             self.not_skip = True
-        if not self.tempo_in_queue.empty():
-            self.tempo_bpm = self.tempo_in_queue.get()
-            self.reset_interval_and_tempo()

@@ -14,6 +14,6 @@ class ExternalConfig:
 @define
 class InternalConfig:
     first_start_delay: float = 2.0
-    speed_diff: int = 5
+    speed_diff: int = 60
     time_drift: float = 0.005
     sd_latency: float = 0.001

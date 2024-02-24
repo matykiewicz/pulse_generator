@@ -21,21 +21,21 @@ def main(blocking: bool) -> Engine:
         "-a",
         "--amplitude",
         type=float,
-        default=300.0,
+        default=400.0,
         help="amplitude (default: %(default)s)",
     )
     parser.add_argument(
         "-t",
         "--tempos-init",
         type=int,
-        default=60,
+        default=120,
         help="initial beats per minute (default: %(default)s)",
     )
     parser.add_argument(
         "-s",
         "--steps-init",
         type=int,
-        default=4,
+        default=16,
         help="initial steps per part (default: %(default)s)",
     )
     parser.add_argument(
