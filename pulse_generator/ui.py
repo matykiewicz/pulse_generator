@@ -17,11 +17,11 @@ class PulserDisplay(Static):
     step_val = reactive(0)
     waits_val = reactive(0)
     wait_val = reactive(0)
+    stopped = reactive(False)
 
     def __init__(
         self,
         dev_name: str,
-        next_schedule: float,
         tempos_init: int,
         tempo_init: int,
         steps_init: int,
@@ -30,63 +30,72 @@ class PulserDisplay(Static):
         pause_button: Button,
     ):
         super().__init__()
+        self.internal_config = InternalConfig()
         self.pause_button = pause_button
         self.dev_name = dev_name
-        self.next_schedule = next_schedule
         self.tempos_val = tempos_init
         self.tempo_val = tempo_init
         self.steps_val = steps_init
-        self.step_val = 1
+        self.step_val = steps_init
         self.waits_val = waits_init
         self.wait_val = waits_init
         self.commands: List[str] = list()
         self.pulser = pulser
-        self.stopped = False
         self.interval_sec = 0
         self.total_time_for_steps = 0
         self.reset_interval_and_tempo()
-        self.set_timer(delay=self.next_schedule - time.time() - 0.002, callback=self.run_schedule)
-        self.f = open("yyy.txt", "w")
+        self.next_schedule = self.pulser.next_schedule
+        # self.set_timer(
+        #    delay=self.next_schedule - time.time() - self.internal_config.time_drift,
+        #    callback=self.run_schedule,
+        # )
 
     def reset_interval_and_tempo(self):
         self.interval_sec = round(1 / (self.tempo_val / 60), 3)
+        self.tempos_val = round(1 / (self.interval_sec / 60))
         self.total_time_for_steps = self.steps_val * self.interval_sec
 
     def run_schedule(self) -> None:
-        self.f.write(f"{self.next_schedule} {self.step_val} {self.wait_val} {self.next_schedule - time.time()}\n")
-        self.f.flush()
-        self.next_schedule += self.interval_sec
-
-        if self.step_val == self.steps_val:
-            self.execute_wait()
-            self.execute_command()
-
         step_val = self.step_val
         step_val = step_val % self.steps_val
         step_val += 1
-        self.step_val = step_val
-        self.set_timer(delay=self.next_schedule - time.time() - 0.002, callback=self.run_schedule)
+        # self.step_val = step_val
+        self.sync_step()
+        if self.step_val == self.steps_val:
+            self.execute_wait()
+            self.execute_command()
+        self.next_schedule += self.interval_sec
+        # self.set_timer(
+        #    delay=self.next_schedule - time.time() - self.internal_config.time_drift,
+        #    callback=self.run_schedule,
+        # )
 
     def execute_wait(self):
-        if self.wait_val < self.waits_val:
+        if self.pulser.pause_in_queue.empty() and self.wait_val < self.waits_val:
             wait_val = self.wait_val
             wait_val += 1
             self.wait_val = wait_val
-            if wait_val == self.waits_val:
-                self.pause_button.disabled = False
+
+    def sync_step(self):
+        if not self.pulser.step_out_queue.empty():
+            self.step_val = self.pulser.step_out_queue.get()
 
     def execute_command(self):
         if len(self.commands) > 0:
             command = self.commands.pop()
             if command == "pause":
                 self.wait_val = 0
-                if self.pulser.pause_queue.empty():
+                if self.pulser.pause_in_queue.empty():
                     for i in range(self.waits_val):
-                        self.pulser.pause_queue.put("pause")
+                        self.pulser.pause_in_queue.put("pause")
             elif command == "stop":
-                pass
+                self.stopped = True
             elif command == "start":
-                pass
+                self.stopped = False
+            elif command == "step":
+                raise NotImplementedError()
+        if self.stopped and self.pulser.pause_in_queue.empty():
+            self.pulser.pause_in_queue.put("pause")
 
     def update_all(self):
         self.update(
@@ -114,7 +123,6 @@ class PulserDisplay(Static):
         self.update_all()
 
     def start(self) -> bool:
-
         if len(self.commands) == 0:
             self.commands.append("start")
             return True
@@ -129,11 +137,8 @@ class PulserDisplay(Static):
             return False
 
     def pause(self) -> bool:
-        if len(self.commands) == 0:
-            self.commands.append("pause")
-            return True
-        else:
-            return False
+        self.pulser.pause_in_queue.put("pause")
+        return True
 
     def step(self) -> bool:
         if len(self.commands) == 0:
@@ -160,7 +165,6 @@ class PulserUI(Static):
     def __init__(
         self,
         pulser: Pulser,
-        next_schedule: float,
         tempos_init: int,
         tempo_init: int,
         steps_init: int,
@@ -169,7 +173,6 @@ class PulserUI(Static):
         super().__init__()
         self.pulser = pulser
         self.dev_name = pulser.device_name
-        self.next_schedule = next_schedule
         self.tempos_init = tempos_init
         self.tempo_init = tempo_init
         self.steps_init = steps_init
@@ -177,7 +180,6 @@ class PulserUI(Static):
         self.pause_button = Button("Pause", id="pause")
         self.pulser_display = PulserDisplay(
             dev_name=self.dev_name,
-            next_schedule=self.next_schedule,
             tempos_init=self.tempos_init,
             steps_init=self.steps_init,
             tempo_init=self.tempo_init,
@@ -189,7 +191,7 @@ class PulserUI(Static):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Event handler called when a button is pressed."""
         button_id = event.button.id
-        pulser_display = self.query_one(PulserDisplay)
+        pulser_display = self.pulser_display
         if button_id == "start":
             pulser_display.start()
             self.add_class("started")
@@ -199,8 +201,8 @@ class PulserUI(Static):
         elif button_id == "step":
             pulser_display.step()
         elif button_id == "pause":
+            self.pulser.pause_in_queue.put("pause")
             pulser_display.pause()
-            self.pause_button.disabled = True
 
     def compose(self) -> ComposeResult:
         """Create child widgets of a stopwatch."""
@@ -237,13 +239,12 @@ class UI(App):
         self.pulser_devs = pulser_devs
         self.external_config = external_config
         self.internal_config = InternalConfig()
-        self.pulser_uis = list()
+        self.pulser_uis: List[PulserUI] = list()
 
     def compose(self) -> ComposeResult:
         for pulser in self.pulser_devs:
             pulser_ui = PulserUI(
                 pulser=pulser,
-                next_schedule=pulser.next_schedule,
                 tempos_init=self.external_config.tempos_init,
                 tempo_init=pulser.tempo_bpm,
                 steps_init=self.external_config.steps_init,
@@ -306,7 +307,6 @@ class UI(App):
                 self.pulser_uis[0].pulser_display.step()
             else:
                 self.pulser_uis[0].pulser_display.pause()
-                self.pulser_uis[0].pause_button.disabled = True
 
     def action_toggle_ps_2(self) -> None:
         if len(self.pulser_uis) > 1:
@@ -314,7 +314,6 @@ class UI(App):
                 self.pulser_uis[1].pulser_display.step()
             else:
                 self.pulser_uis[1].pulser_display.pause()
-                self.pulser_uis[1].pause_button.disabled = True
 
     def action_toggle_ps_3(self) -> None:
         if len(self.pulser_uis) > 2:
@@ -322,7 +321,6 @@ class UI(App):
                 self.pulser_uis[2].pulser_display.step()
             else:
                 self.pulser_uis[2].pulser_display.pause()
-                self.pulser_uis[2].pause_button.disabled = True
 
     def action_toggle_ps_4(self) -> None:
         if len(self.pulser_uis) > 3:
@@ -330,4 +328,3 @@ class UI(App):
                 self.pulser_uis[3].pulser_display.step()
             else:
                 self.pulser_uis[3].pulser_display.pause()
-                self.pulser_uis[2].pause_button.disabled = True

@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import time
 from argparse import Namespace
 from typing import List
@@ -19,6 +20,9 @@ class Engine:
         self.audio_devs = self.get_audio_devs()
         self.pulser_devs = self.get_pulser_devs()
         self.ui = self.get_ui()
+        pid = os.getpid()
+        if getattr(os, "sched_setaffinity", None):
+            os.sched_setaffinity(pid, {0})
 
     @classmethod
     def run(cls, args: Namespace, blocking: bool) -> "Engine":
@@ -38,7 +42,6 @@ class Engine:
     def get_pulser_devs(self) -> List[Pulser]:
         pulser_devs: List[Pulser] = list()
         time_sync = math.ceil(time.time() + self.internal_config.first_start_delay)
-        min_intervals = list()
         for pulser_id, audio_dev in enumerate(self.audio_devs):
             pulser = Pulser(
                 pulser_id=pulser_id,
@@ -46,12 +49,8 @@ class Engine:
                 audio_dev=audio_dev,
                 time_sync=float(time_sync),
             )
-            min_intervals.append(pulser.min_int_sec)
-            pulser_devs.append(pulser)
-        best_min_interval = max(min_intervals)
-        for pulser in pulser_devs:
-            pulser.min_int_sec = best_min_interval
             pulser.detach_pulser()
+            pulser_devs.append(pulser)
         return pulser_devs
 
     def get_ui(self) -> UI:
