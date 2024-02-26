@@ -33,7 +33,7 @@ class Pulser:
         self.pulse_loud[:, 0] = external_config.amplitude * signal.square(
             2 * np.pi * external_config.frequency * axis_x
         )
-        self.pulse_quiet = np.zeros((self.min_length, 1), dtype=np.float32)
+        self.pulse_loud[-1] = 0
         self.not_skip: bool = True
         self.interval_sec: float = 0.0
         self.tempo_in_queue: Queue[int] = Queue()
