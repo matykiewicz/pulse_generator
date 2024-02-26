@@ -26,7 +26,7 @@ class Pulser:
         self.audio_dev = audio_dev
         self.device_id = audio_dev["index"]
         self.device_name = audio_dev["name"]
-        self.sample_rate = int(audio_dev["default_samplerate"])
+        self.sample_rate = 44100
         self.min_length = int(self.sample_rate / external_config.frequency / 2)
         axis_x = np.arange(0, 1, 1 / self.sample_rate)[0 : self.min_length]
         self.pulse_loud = np.zeros((self.min_length, 1), dtype=np.float32)
