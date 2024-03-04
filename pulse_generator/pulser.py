@@ -66,7 +66,7 @@ class Pulser:
     def callback(self, out_data, frames, ts, status):
         self.run_tempo_in_command()
         if not self.sound_in_queue.empty():
-            sound = self.sound_in_queue.get()
+            self.sound_in_queue.get()
             out_data[:] = self.pulse_loud
             return None
         time_now = time.time()

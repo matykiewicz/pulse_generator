@@ -176,6 +176,27 @@ class PulserDisplay(Static):
         else:
             return False
 
+    def wait_up(self, up: int) -> bool:
+        if self.waits_val == self.wait_val:
+            waits_val = self.waits_val
+            waits_val += up
+            self.waits_val = waits_val
+            self.wait_val = waits_val
+            return True
+        else:
+            return False
+
+    def wait_down(self, down: int) -> bool:
+        if self.waits_val == self.wait_val:
+            waits_val = self.waits_val
+            if waits_val >= 2:
+                waits_val -= down
+            self.waits_val = waits_val
+            self.wait_val = waits_val
+            return True
+        else:
+            return False
+
 
 class PulserUI(Static):
 
@@ -244,8 +265,10 @@ class UI(App):
         ("j", "toggle_ps_2", "PS2"),
         ("k", "toggle_ps_3", "PS3"),
         ("l", "toggle_ps_4", "PS4"),
-        ("9", "tempo_up", "T UP"),
-        ("7", "tempo_down", "T DO"),
+        ("9", "tempo_up", "T+"),
+        ("7", "tempo_down", "T-"),
+        ("6", "wait_up", "W+"),
+        ("4", "wait_down", "W-"),
     ]
 
     def __init__(
@@ -280,6 +303,14 @@ class UI(App):
     def action_tempo_down(self) -> None:
         for pulser_ui in self.pulser_uis:
             pulser_ui.pulser_display.tempo_down(self.internal_config.speed_diff)
+
+    def action_wait_up(self) -> None:
+        for pulser_ui in self.pulser_uis:
+            pulser_ui.pulser_display.wait_up(1)
+
+    def action_wait_down(self) -> None:
+        for pulser_ui in self.pulser_uis:
+            pulser_ui.pulser_display.wait_down(1)
 
     def action_toggle_ss_1(self) -> None:
         if len(self.pulser_uis) > 0:
