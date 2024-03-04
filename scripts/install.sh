@@ -20,3 +20,7 @@ python3.9 -m venv ~/.venv
 ~/.venv/bin/pip3 install poetry
 echo "~/pulse_generator/scripts/bashrc.sh" >> ~/.bashrc
 
+# Make it work!
+
+sudo reboot now
+
