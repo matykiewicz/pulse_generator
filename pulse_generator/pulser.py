@@ -86,8 +86,12 @@ class Pulser:
 
     def start_schedule(self):
         pid = os.getpid()
-        if getattr(os, "sched_setaffinity", None) and self.internal_config.set_cpu_aff:
-            os.sched_setaffinity(pid, {self.pulser_id + 1})  # type: ignore
+        if (
+            getattr(os, "sched_setaffinity", None)
+            and self.internal_config.set_cpu_aff
+            and os.cpu_count() > self.pulser_id
+        ):
+            os.sched_setaffinity(pid, {self.pulser_id})  # type: ignore
         stream = sd.OutputStream(
             device=self.device_id,
             samplerate=self.sample_rate,
