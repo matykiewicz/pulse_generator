@@ -13,12 +13,14 @@ sudo sed -i 's/#ReserveVT/ReserveVT/'  /etc/systemd/logind.conf
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 sudo cp ~/pulse_generator/scripts/override.conf /etc/systemd/system/getty@tty1.service.d/override.conf
 sudo sed -i 's/8x16/12x24/' /etc/default/console-setup
+sleep 1
 
 # User level changes
 
-python3.9 -m venv ~/.venv
-~/.venv/bin/pip3 install poetry
-echo "~/pulse_generator/scripts/bashrc.sh" >> ~/.bashrc
+sudo su jetson -c 'python3.9 -m venv ~/.venv'
+sudo su jetson -c '~/.venv/bin/pip3 install poetry'
+sudo su jetson -c 'echo "~/pulse_generator/scripts/bashrc.sh" >> ~/.bashrc'
+sleep 1
 
 # Make it work!
 
