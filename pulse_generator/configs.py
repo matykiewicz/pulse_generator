@@ -20,4 +20,5 @@ class InternalConfig:
     min_wave_val: float = 0.0005
     main_python_sleep_s: float = 10.0
     main_sd_sleep_ms: float = 1
-    set_cpu_aff: bool = True
+    set_cpu_aff: bool = False
+

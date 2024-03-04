@@ -236,14 +236,14 @@ class UI(App):
 
     CSS_PATH = "ui.tcss"
     BINDINGS = [
-        ("a", "toggle_ss_1", "S/S D1"),
-        ("b", "toggle_ss_2", "S/S D2"),
-        ("c", "toggle_ss_3", "S/S D3"),
-        ("2", "toggle_ss_4", "S/S D4"),
-        ("g", "toggle_ps_1", "P/S D1"),
-        ("h", "toggle_ps_2", "P/S D2"),
-        ("i", "toggle_ps_3", "P/S D3"),
-        ("5", "toggle_ps_4", "P/S D4"),
+        ("a", "toggle_ss_1", "SS1"),
+        ("b", "toggle_ss_2", "SS2"),
+        ("c", "toggle_ss_3", "SS3"),
+        ("d", "toggle_ss_4", "SS4"),
+        ("i", "toggle_ps_1", "PS1"),
+        ("j", "toggle_ps_2", "PS2"),
+        ("k", "toggle_ps_3", "PS3"),
+        ("l", "toggle_ps_4", "PS4"),
         ("9", "tempo_up", "T UP"),
         ("7", "tempo_down", "T DO"),
     ]
