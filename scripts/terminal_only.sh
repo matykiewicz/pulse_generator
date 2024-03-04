@@ -1,16 +1,22 @@
+#! /bin/bash
 
+# OS level changes
+
+sudo apt -y update
+sudo apt -y upgrade
+sudo apt -y install libportaudio2 libasound-dev
+sudo apt -y install alsa alsa-utils
+sudo apt -y install python3.9 python3.9-venv python3.9-dev
 sudo systemctl set-default multi-user.target
+sudo sed -i 's/#NAutoVTs/NAutoVTs/'  /etc/systemd/logind.conf
+sudo sed -i 's/#ReserveVT/ReserveVT/'  /etc/systemd/logind.conf
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
+sudo cp ~/pulse_generator/scripts/override.conf /etc/systemd/system/getty@tty1.service.d/override.conf
+sudo sed -i 's/8x16/12x24/' /etc/default/console-setup
 
-#NAutoVTs
-#ReserveVT
+# User level changes
 
-/etc/systemd/logind.conf
-sudo mkdir /etc/systemd/system/getty@tty1.service.d/
-sudo nano /etc/systemd/system/getty@tty1.service.d/override.conf
-
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --noissue --autologin ostechnix %I $TERM
-Type=idle
-
+python3.9 -m venv ~/.venv
+~/.venv/bin/pip3 install poetry
+echo "~/pulse_generator/scripts/bashrc.sh" >> ~/.bashrc
 
