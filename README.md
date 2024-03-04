@@ -63,7 +63,9 @@ sudo ~/pulse_generator/scripts/install.sh
 
 The installation process reboots the Jetson Nano to terminal auto-login and runs the python code when executing the 'bashrc' file.
 
-# Final 
+# Final Product
 
-![Alt text](images/IMG_7476.jpg?raw=true "Title")
+This is how my setup looks like:
+
+![Korg Volca and Jetson Nano as Sync Device](images/IMG_7476.jpg?raw=true "Korg Volca and Jetson Nano as Sync Device")
 
