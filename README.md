@@ -65,3 +65,5 @@ The installation process reboots the Jetson Nano to terminal auto-login and runs
 
 # Final 
 
+![Alt text](images/IMG_7476.jpg?raw=true "Title")
+
