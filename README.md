@@ -7,6 +7,21 @@ This is a proof-of-concept where we show that python can generate high quality a
 
 The code can handle up to 4 audio cards. This means that we can handle sync-in on up to 4 synthesizer independently and yet synchronized. This is an improvement over the Korg provided daisy chaining of the sync-in-sync-out ports.
 
+The correct way of programming Korg Volcas is by buying a sequencer like this one:
+
+* https://www.korg.com/us/products/dj/sq_64/
+
+The sequencer can memorize patches and chain them in a desired order. There are Korg Volcas that don't need sequencer because they have a built-in chaining of patches:
+
+* https://www.korg.com/us/products/dj/volca_sample2/
+* https://www.korg.com/us/products/dj/volca_fm2/
+* https://www.korg.com/us/products/dj/volca_drum/
+
+We built the pulse generator mainly for Korg Volca Bass and Korg Volca Keys as they don't offer chaining of patches:
+
+* https://www.korg.com/us/products/dj/volca_bass/
+* https://www.korg.com/us/products/dj/volca_keys/
+
 # Functionality
 
 We want to be able to stop, start and pause patches independently on 4 synthesizers without loosing the track of the position in the patch. This way we can switch between memorized patches while the synthesizer is in a stop or pause state. The music stops and pause on step 16 of a patch and starts again on step 1. This way even if we stop and start different synthesizers independently they all remain at the same step in their respective patches.
