@@ -9,6 +9,8 @@ class ExternalConfig:
     tempos_init: int
     steps_init: int
     waits_init: int
+    rands_init: int
+    rands_mag: float
 
 
 @define

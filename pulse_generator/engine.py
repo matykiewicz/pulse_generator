@@ -33,6 +33,8 @@ class Engine:
             tempos_init=args.tempos_init,
             steps_init=args.steps_init,
             waits_init=args.waits_init,
+            rands_init=args.rands_init,
+            rands_mag=args.rands_magnitude,
         )
         engine = cls(external_config=external_config)
         if blocking:

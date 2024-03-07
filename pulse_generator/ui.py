@@ -1,3 +1,4 @@
+import random
 import time
 from typing import List
 
@@ -17,6 +18,8 @@ class PulserDisplay(Static):
     step_val = reactive(0)
     waits_val = reactive(0)
     wait_val = reactive(0)
+    rands_val = reactive(0)
+    rand_val = reactive(0)
     stopped = reactive(False)
 
     def __init__(
@@ -26,6 +29,7 @@ class PulserDisplay(Static):
         tempo_init: int,
         steps_init: int,
         waits_init: int,
+        rands_init: int,
         pulser: Pulser,
         pause_button: Button,
         stop_button: Button,
@@ -41,11 +45,14 @@ class PulserDisplay(Static):
         self.step_val = steps_init
         self.waits_val = waits_init
         self.wait_val = waits_init
+        self.rands_val = rands_init
+        self.rand_val = rands_init
         self.commands: List[str] = list()
         self.pulser = pulser
         self.interval_sec: float = 0.0
         self.reset_interval_and_tempo()
         self.next_schedule = self.pulser.next_schedule
+        self.randoms = [0.0] * self.steps_val
         self.set_timer(
             delay=self.next_schedule - time.time() - self.internal_config.time_drift,
             callback=self.run_schedule,
@@ -58,7 +65,8 @@ class PulserDisplay(Static):
     def run_schedule(self) -> None:
         if self.step_val == self.steps_val:
             self.run_wait_command()
-            self.run_pause_start_stop_command()
+            self.run_rand_command()
+            self.run_pause_start_stop_rand_command()
         step_val = self.step_val
         step_val = step_val % self.steps_val
         step_val += 1
@@ -72,17 +80,24 @@ class PulserDisplay(Static):
         )
 
     def run_wait_command(self):
-        if self.pulser.pause_in_queue.empty() and self.wait_val < self.waits_val:
+        if self.wait_val < self.waits_val:
             wait_val = self.wait_val
             wait_val += 1
             if wait_val == self.waits_val:
                 self.pause_button.disabled = False
                 self.stop_button.disabled = False
-                if not self.pulser.pause_in_queue.empty():
-                    self.pulser.pause_in_queue.get()
             self.wait_val = wait_val
 
-    def run_pause_start_stop_command(self):
+    def run_rand_command(self):
+        if self.rand_val < self.rands_val:
+            rand_val = self.rand_val
+            rand_val += 1
+            if rand_val == self.rands_val:
+                self.pause_button.disabled = False
+                self.stop_button.disabled = False
+            self.rand_val = rand_val
+
+    def run_pause_start_stop_rand_command(self):
         if len(self.commands) > 0:
             command = self.commands.pop()
             if command == "pause":
@@ -91,6 +106,8 @@ class PulserDisplay(Static):
                 self.stopped = True
             elif command == "start":
                 self.stopped = False
+            elif command == "rand":
+                self.rand_val = 0
         if self.stopped and self.pulser.pause_in_queue.empty():
             self.pulser.pause_in_queue.put("pause")
 
@@ -102,8 +119,9 @@ class PulserDisplay(Static):
     def update_all(self):
         self.update(
             f"D: {self.dev_name}; T: {self.tempo_val}/{self.tempos_val}; "
-            f"S: {self.step_val}/{self.steps_val}; "
-            f"W: {self.wait_val}/{self.waits_val}"
+            f"S: {self.step_val:02}/{self.steps_val:02}; "
+            f"W: {self.wait_val}/{self.waits_val}; "
+            f"R: {self.rand_val}/{self.rands_val}"
         )
 
     def watch_step_val(self) -> None:
@@ -115,6 +133,9 @@ class PulserDisplay(Static):
     def watch_wait_val(self) -> None:
         self.update_all()
 
+    def watch_rand_val(self) -> None:
+        self.update_all()
+
     def watch_steps_val(self) -> None:
         self.update_all()
 
@@ -122,6 +143,9 @@ class PulserDisplay(Static):
         self.update_all()
 
     def watch_waits_val(self) -> None:
+        self.update_all()
+
+    def watch_rands_val(self) -> None:
         self.update_all()
 
     def start(self) -> bool:
@@ -152,11 +176,23 @@ class PulserDisplay(Static):
         else:
             return False
 
+    def rand(self) -> bool:
+        if len(self.commands) == 0 and self.pulser.rand_in_queue.empty():
+            self.commands.append("rand")
+            self.pause_button.disabled = True
+            self.stop_button.disabled = True
+            for i in range(self.rands_val):
+                for _rand_ in self.randoms:
+                    self.pulser.rand_in_queue.put(_rand_)
+            return True
+        else:
+            return False
+
     def step(self) -> bool:
         self.pulser.play_sound()
         return True
 
-    def tempo_up(self, up: int) -> bool:
+    def tempos_up(self, up: int) -> bool:
         tempos_val = self.tempos_val
         tempos_val += up
         self.tempos_val = tempos_val
@@ -166,17 +202,20 @@ class PulserDisplay(Static):
         else:
             return False
 
-    def tempo_down(self, down: int) -> bool:
-        tempos_val = self.tempos_val
-        tempos_val -= down
-        self.tempos_val = tempos_val
-        if self.pulser.tempo_in_queue.empty():
-            self.pulser.tempo_in_queue.put(self.tempos_val)
-            return True
+    def tempos_down(self, down: int) -> bool:
+        if self.tempos_val >= down * 2:
+            tempos_val = self.tempos_val
+            tempos_val -= down
+            self.tempos_val = tempos_val
+            if self.pulser.tempo_in_queue.empty():
+                self.pulser.tempo_in_queue.put(self.tempos_val)
+                return True
+            else:
+                return False
         else:
             return False
 
-    def wait_up(self, up: int) -> bool:
+    def waits_up(self, up: int) -> bool:
         if self.waits_val == self.wait_val:
             waits_val = self.waits_val
             waits_val += up
@@ -186,7 +225,7 @@ class PulserDisplay(Static):
         else:
             return False
 
-    def wait_down(self, down: int) -> bool:
+    def waits_down(self, down: int) -> bool:
         if self.waits_val == self.wait_val:
             waits_val = self.waits_val
             if waits_val >= 2:
@@ -196,6 +235,32 @@ class PulserDisplay(Static):
             return True
         else:
             return False
+
+    def rands_up(self, up: int) -> bool:
+        if self.rands_val == self.rand_val:
+            rands_val = self.rands_val
+            rands_val += up
+            self.rands_val = rands_val
+            self.rand_val = rands_val
+            return True
+        else:
+            return False
+
+    def rands_down(self, down: int) -> bool:
+        if self.rands_val == self.rand_val:
+            rands_val = self.rands_val
+            if rands_val >= 2:
+                rands_val -= down
+            self.rands_val = rands_val
+            self.rand_val = rands_val
+            return True
+        else:
+            return False
+
+    def copy_randoms(self, randoms: List[float]) -> bool:
+        for i, random_float in enumerate(randoms):
+            self.randoms[i] = random_float
+        return True
 
 
 class PulserUI(Static):
@@ -207,6 +272,7 @@ class PulserUI(Static):
         tempo_init: int,
         steps_init: int,
         waits_init: int,
+        rands_init: int,
     ):
         super().__init__()
         self.pulser = pulser
@@ -215,6 +281,7 @@ class PulserUI(Static):
         self.tempo_init = tempo_init
         self.steps_init = steps_init
         self.waits_init = waits_init
+        self.rands_init = rands_init
         self.pause_button = Button("Pause", id="pause")
         self.stop_button = Button("Stop", id="stop", variant="error")
         self.pulser_display = PulserDisplay(
@@ -223,6 +290,7 @@ class PulserUI(Static):
             steps_init=self.steps_init,
             tempo_init=self.tempo_init,
             waits_init=self.waits_init,
+            rands_init=self.rands_init,
             pulser=self.pulser,
             pause_button=self.pause_button,
             stop_button=self.stop_button,
@@ -257,18 +325,25 @@ class UI(App):
 
     CSS_PATH = "ui.tcss"
     BINDINGS = [
-        ("a", "toggle_ss_1", "SS1"),
-        ("b", "toggle_ss_2", "SS2"),
-        ("c", "toggle_ss_3", "SS3"),
-        ("d", "toggle_ss_4", "SS4"),
-        ("i", "toggle_ps_1", "PS1"),
-        ("j", "toggle_ps_2", "PS2"),
-        ("k", "toggle_ps_3", "PS3"),
-        ("l", "toggle_ps_4", "PS4"),
+        ("a", "toggle_ss_1", "S1"),
+        ("b", "toggle_ss_2", "S2"),
+        ("c", "toggle_ss_3", "S3"),
+        ("d", "toggle_ss_4", "S4"),
+        ("e", "rand_1", "R1"),
+        ("f", "rand_2", "R2"),
+        ("g", "rand_3", "R3"),
+        ("h", "rand_4", "R4"),
+        ("i", "toggle_ps_1", "P1"),
+        ("j", "toggle_ps_2", "P2"),
+        ("k", "toggle_ps_3", "P3"),
+        ("l", "toggle_ps_4", "P4"),
         ("9", "tempo_up", "T+"),
         ("7", "tempo_down", "T-"),
         ("6", "wait_up", "W+"),
         ("4", "wait_down", "W-"),
+        ("8", "shuffle", "RS"),
+        ("\xed", "random_up", "R+"),
+        ("\xee", "random_down", "R-"),
     ]
 
     def __init__(
@@ -280,7 +355,15 @@ class UI(App):
         self.pulser_devs = pulser_devs
         self.external_config = external_config
         self.internal_config = InternalConfig()
+        self.randoms = [0.0] * external_config.steps_init
         self.pulser_uis: List[PulserUI] = list()
+        self.randomize()
+
+    def randomize(self):
+        for i in range(len(self.randoms)):
+            self.randoms[i] = random.uniform(
+                -self.external_config.rands_mag, self.external_config.rands_mag
+            )
 
     def compose(self) -> ComposeResult:
         for pulser in self.pulser_devs:
@@ -290,34 +373,49 @@ class UI(App):
                 tempo_init=pulser.tempo_bpm,
                 steps_init=self.external_config.steps_init,
                 waits_init=self.external_config.waits_init,
+                rands_init=self.external_config.rands_init,
             )
             pulser_ui.add_class("started")
+            pulser_ui.pulser_display.copy_randoms(self.randoms)
             self.pulser_uis.append(pulser_ui)
         yield Footer()
         yield ScrollableContainer(*self.pulser_uis)
 
     def action_tempo_up(self) -> None:
         for pulser_ui in self.pulser_uis:
-            pulser_ui.pulser_display.tempo_up(self.internal_config.speed_diff)
+            pulser_ui.pulser_display.tempos_up(self.internal_config.speed_diff)
 
     def action_tempo_down(self) -> None:
         for pulser_ui in self.pulser_uis:
-            pulser_ui.pulser_display.tempo_down(self.internal_config.speed_diff)
+            pulser_ui.pulser_display.tempos_down(self.internal_config.speed_diff)
 
     def action_wait_up(self) -> None:
         for pulser_ui in self.pulser_uis:
-            pulser_ui.pulser_display.wait_up(1)
+            pulser_ui.pulser_display.waits_up(1)
 
     def action_wait_down(self) -> None:
         for pulser_ui in self.pulser_uis:
-            pulser_ui.pulser_display.wait_down(1)
+            pulser_ui.pulser_display.waits_down(1)
+
+    def action_random_up(self) -> None:
+        for pulser_ui in self.pulser_uis:
+            pulser_ui.pulser_display.rands_up(1)
+
+    def action_random_down(self) -> None:
+        for pulser_ui in self.pulser_uis:
+            pulser_ui.pulser_display.rands_down(1)
+
+    def action_shuffle(self) -> None:
+        self.randomize()
+        for pulser_ui in self.pulser_uis:
+            pulser_ui.pulser_display.copy_randoms(self.randoms)
 
     def action_toggle_ss_1(self) -> None:
         if len(self.pulser_uis) > 0:
             if self.pulser_uis[0].pulser_display.stopped:
                 self.pulser_uis[0].pulser_display.start()
                 self.pulser_uis[0].add_class("started")
-            else:
+            elif not self.pulser_uis[0].stop_button.disabled:
                 self.pulser_uis[0].pulser_display.stop()
                 self.pulser_uis[0].remove_class("started")
 
@@ -326,7 +424,7 @@ class UI(App):
             if self.pulser_uis[1].pulser_display.stopped:
                 self.pulser_uis[1].pulser_display.start()
                 self.pulser_uis[1].add_class("started")
-            else:
+            elif not self.pulser_uis[1].stop_button.disabled:
                 self.pulser_uis[1].pulser_display.stop()
                 self.pulser_uis[1].remove_class("started")
 
@@ -336,7 +434,7 @@ class UI(App):
                 self.pulser_uis[2].pulser_display.start()
                 self.pulser_uis[2].add_class()
                 self.pulser_uis[2].add_class("started")
-            else:
+            elif not self.pulser_uis[2].stop_button.disabled:
                 self.pulser_uis[2].pulser_display.stop()
                 self.pulser_uis[2].remove_class("started")
 
@@ -346,7 +444,7 @@ class UI(App):
                 self.pulser_uis[3].pulser_display.start()
                 self.pulser_uis[3].add_class()
                 self.pulser_uis[3].add_class("started")
-            else:
+            elif not self.pulser_uis[3].stop_button.disabled:
                 self.pulser_uis[3].pulser_display.stop()
                 self.pulser_uis[3].remove_class("started")
 
@@ -354,26 +452,58 @@ class UI(App):
         if len(self.pulser_uis) > 0:
             if self.pulser_uis[0].pulser_display.stopped:
                 self.pulser_uis[0].pulser_display.step()
-            else:
+            elif not self.pulser_uis[0].pause_button.disabled:
                 self.pulser_uis[0].pulser_display.pause()
 
     def action_toggle_ps_2(self) -> None:
         if len(self.pulser_uis) > 1:
             if self.pulser_uis[1].pulser_display.stopped:
                 self.pulser_uis[1].pulser_display.step()
-            else:
+            elif not self.pulser_uis[1].pause_button.disabled:
                 self.pulser_uis[1].pulser_display.pause()
 
     def action_toggle_ps_3(self) -> None:
         if len(self.pulser_uis) > 2:
             if self.pulser_uis[2].pulser_display.stopped:
                 self.pulser_uis[2].pulser_display.step()
-            else:
+            elif not self.pulser_uis[2].pause_button.disabled:
                 self.pulser_uis[2].pulser_display.pause()
 
     def action_toggle_ps_4(self) -> None:
         if len(self.pulser_uis) > 3:
             if self.pulser_uis[3].pulser_display.stopped:
                 self.pulser_uis[3].pulser_display.step()
-            else:
+            elif not self.pulser_uis[3].pause_button.disabled:
                 self.pulser_uis[3].pulser_display.pause()
+
+    def action_rand_1(self) -> None:
+        if len(self.pulser_uis) > 0:
+            if (
+                not self.pulser_uis[0].pulser_display.stopped
+                and not self.pulser_uis[0].pause_button.disabled
+            ):
+                self.pulser_uis[0].pulser_display.rand()
+
+    def action_rand_2(self) -> None:
+        if len(self.pulser_uis) > 1:
+            if (
+                not self.pulser_uis[1].pulser_display.stopped
+                and not self.pulser_uis[1].pause_button.disabled
+            ):
+                self.pulser_uis[1].pulser_display.rand()
+
+    def action_rand_3(self) -> None:
+        if len(self.pulser_uis) > 2:
+            if (
+                not self.pulser_uis[2].pulser_display.stopped
+                and not self.pulser_uis[2].pause_button.disabled
+            ):
+                self.pulser_uis[2].pulser_display.rand()
+
+    def action_rand_4(self) -> None:
+        if len(self.pulser_uis) > 3:
+            if (
+                not self.pulser_uis[3].pulser_display.stopped
+                and not self.pulser_uis[3].pause_button.disabled
+            ):
+                self.pulser_uis[3].pulser_display.rand()

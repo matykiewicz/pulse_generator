@@ -46,6 +46,20 @@ def main(blocking: bool) -> Engine:
         help="initial no. of parts to wait when paused (default: %(default)s)",
     )
     parser.add_argument(
+        "-r",
+        "--rands-init",
+        type=int,
+        default=1,
+        help="initial no. of parts to wait when paused (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-m",
+        "--rands-magnitude",
+        type=float,
+        default=0.5,
+        help="strength of the pulse randomness between 0 and 1 (default: %(default)s)",
+    )
+    parser.add_argument(
         "-d",
         "--device-match",
         type=str,

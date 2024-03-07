@@ -40,6 +40,7 @@ class Pulser:
         self.tempo_out_queue: Queue[int] = Queue()
         self.pause_in_queue: Queue[str] = Queue()
         self.sound_in_queue: Queue[str] = Queue()
+        self.rand_in_queue: Queue[float] = Queue()
         self.steps = self.external_config.steps_init
         self.tempo_bpm = self.external_config.tempos_init
         self.time_sync: float = time_sync
@@ -47,6 +48,7 @@ class Pulser:
         self.reset_interval_and_tempo()
         self.next_schedule = self.time_sync
         self.process = Process(target=self.start_schedule)
+        self.randoms = [0.0] * self.steps
         logging.info(
             f"Created {self.device_name} pulser with time sync {self.time_sync}"
         )
@@ -70,7 +72,12 @@ class Pulser:
             out_data[:] = self.pulse_loud
             return None
         time_now = time.time()
-        if time_now >= (self.next_schedule - self.internal_config.time_drift):
+        right_time = (
+            self.next_schedule
+            - self.internal_config.time_drift
+            - self.randoms[self.step - 1] * self.interval_sec
+        )
+        if time_now >= right_time:
             if self.not_skip:
                 out_data[:] = self.pulse_loud
             else:
@@ -78,6 +85,7 @@ class Pulser:
             self.next_schedule += self.interval_sec
             if self.step == self.steps:
                 self.run_pause_command()
+                self.run_rand_in_command()
                 self.run_tempo_out_command()
             self.step = self.step % self.steps
             self.step += 1
@@ -108,6 +116,17 @@ class Pulser:
     def run_tempo_in_command(self):
         if not self.tempo_in_queue.empty():
             self.tempo_bpm = self.tempo_in_queue.get()
+
+    def run_rand_in_command(self):
+        if not self.rand_in_queue.empty():
+            for i in range(self.steps):
+                rand = self.rand_in_queue.get()
+                self.randoms[i] = rand
+            self.randoms[0] = 0.0
+            self.randoms[self.steps - 1] = 0.0
+        else:
+            for i in range(self.steps):
+                self.randoms[i] = 0.0
 
     def run_tempo_out_command(self):
         self.reset_interval_and_tempo()
