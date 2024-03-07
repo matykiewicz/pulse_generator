@@ -20,7 +20,7 @@ class Pulser:
         audio_dev: Dict[str, Any],
         time_sync: float,
     ):
-        self.pulser_id = pulser_id
+        self.pulser_id: int = pulser_id
         self.external_config = external_config
         self.internal_config = InternalConfig()
         self.audio_dev = audio_dev
@@ -95,9 +95,8 @@ class Pulser:
     def start_schedule(self):
         pid = os.getpid()
         if (
-            getattr(os, "sched_setaffinity", None)
+            getattr(os, "sched_setaffinity", None) is not None
             and self.internal_config.set_cpu_aff
-            and os.cpu_count() > self.pulser_id
         ):
             os.sched_setaffinity(pid, {self.pulser_id})  # type: ignore
         stream = sd.OutputStream(

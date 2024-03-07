@@ -38,7 +38,7 @@ class PulserDisplay(Static):
         self.internal_config = InternalConfig()
         self.pause_button = pause_button
         self.stop_button = stop_button
-        self.dev_name = dev_name
+        self.dev_name = dev_name.replace(" ", "_")
         self.tempos_val = tempos_init
         self.tempo_val = tempo_init
         self.steps_val = steps_init
@@ -118,10 +118,10 @@ class PulserDisplay(Static):
 
     def update_all(self):
         self.update(
-            f"D: {self.dev_name}; T: {self.tempo_val}/{self.tempos_val}; "
-            f"S: {self.step_val:02}/{self.steps_val:02}; "
-            f"W: {self.wait_val}/{self.waits_val}; "
-            f"R: {self.rand_val}/{self.rands_val}"
+            f"D:{self.dev_name} T: {self.tempo_val:03}/{self.tempos_val:03} "
+            f"S:{self.step_val:02}/{self.steps_val:02} "
+            f"W:{self.wait_val:02}/{self.waits_val:02} "
+            f"R:{self.rand_val:02}/{self.rands_val:02}"
         )
 
     def watch_step_val(self) -> None:
@@ -240,6 +240,8 @@ class PulserDisplay(Static):
         if self.rands_val == self.rand_val:
             rands_val = self.rands_val
             rands_val += up
+            if rands_val > self.waits_val:
+                rands_val = 1
             self.rands_val = rands_val
             self.rand_val = rands_val
             return True
@@ -341,9 +343,8 @@ class UI(App):
         ("7", "tempo_down", "T-"),
         ("6", "wait_up", "W+"),
         ("4", "wait_down", "W-"),
-        ("8", "shuffle", "RS"),
-        ("\xed", "random_up", "R+"),
-        ("\xee", "random_down", "R-"),
+        ("8", "shuffle", "S"),
+        ("5", "random_up", "R"),
     ]
 
     def __init__(

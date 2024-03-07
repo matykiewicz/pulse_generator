@@ -9,6 +9,7 @@ Button {
 }
 
 #start {
+    color: white;
     dock: left;
     display: block;
 }
@@ -30,7 +31,7 @@ Button {
 
 .started {
     text-style: bold;
-    background: $success;
+    background: black;
     color: $text;
 }
 
