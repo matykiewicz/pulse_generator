@@ -362,9 +362,14 @@ class UI(App):
 
     def randomize(self):
         for i in range(len(self.randoms)):
-            self.randoms[i] = random.uniform(
+            val = random.uniform(
                 -self.external_config.rands_mag, self.external_config.rands_mag
             )
+            val = (
+                round(val * self.internal_config.rand_quants)
+                / self.internal_config.rand_quants
+            )
+            self.randoms[i] = val
 
     def compose(self) -> ComposeResult:
         for pulser in self.pulser_devs:
