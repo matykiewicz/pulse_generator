@@ -12,5 +12,5 @@ source ~/.venv/bin/activate
 cd ~/pulse_generator/
 rm -rf rm poetry.lock
 ~/.venv/bin/poetry install
-~/.venv/bin/poetry run python3 ./pulse_generator/cli.py -t 120 -s 16 -w 1 -a 1 -f 50
+~/.venv/bin/poetry run python3 ./pulse_generator/cli.py -t 120 -s 16 -w 1 -a 2 -r 1 -m 0.50 -f 60
 

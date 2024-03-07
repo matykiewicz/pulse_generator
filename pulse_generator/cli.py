@@ -56,7 +56,7 @@ def main(blocking: bool) -> Engine:
         "-m",
         "--rands-magnitude",
         type=float,
-        default=0.75,
+        default=0.5,
         help="strength of the pulse randomness between 0 and 1 (default: %(default)s)",
     )
     parser.add_argument(

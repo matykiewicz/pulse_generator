@@ -52,7 +52,7 @@ class PulserDisplay(Static):
         self.interval_sec: float = 0.0
         self.reset_interval_and_tempo()
         self.next_schedule = self.pulser.next_schedule
-        self.randoms = [0.0] * self.steps_val
+        self.randoms = [0.0] * (self.steps_val // 2)
         self.set_timer(
             delay=self.next_schedule - time.time() - self.internal_config.time_drift,
             callback=self.run_schedule,
@@ -69,9 +69,9 @@ class PulserDisplay(Static):
             self.run_pause_start_stop_rand_command()
         step_val = self.step_val
         step_val = step_val % self.steps_val
-        step_val += 1
+        step_val += 2
         self.step_val = step_val
-        if self.step_val == 1:
+        if self.step_val == 2:
             self.run_tempo_out_command()
         self.next_schedule += self.interval_sec
         self.set_timer(
@@ -356,7 +356,7 @@ class UI(App):
         self.pulser_devs = pulser_devs
         self.external_config = external_config
         self.internal_config = InternalConfig()
-        self.randoms = [0.0] * external_config.steps_init
+        self.randoms = [0.0] * (external_config.steps_init // 2)
         self.pulser_uis: List[PulserUI] = list()
         self.randomize()
 
