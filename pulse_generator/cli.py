@@ -35,8 +35,8 @@ def main(blocking: bool) -> Engine:
         "-s",
         "--steps-init",
         type=int,
-        default=4,
-        help="initial steps per part (default: %(default)s)",
+        default=12,
+        help="initial steps per part - it has to be order of 4 and >= 8 (default: %(default)s)",
     )
     parser.add_argument(
         "-w",
@@ -67,6 +67,9 @@ def main(blocking: bool) -> Engine:
         help="initial beats per minute (default: %(default)s)",
     )
     args = parser.parse_args()
+    steps_init = args.steps_init
+    if steps_init % 4 != 0 or steps_init < 8:
+        raise ValueError("Error: '--steps-init' has to be order of 4 and >= 8")
     return run(args=args, blocking=blocking)
 
 

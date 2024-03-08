@@ -13,6 +13,12 @@ async def test_main(command_line_args: List[str]) -> None:
     pilot: Pilot
     engine: Engine = main(blocking=False)
     async with engine.ui.run_test() as pilot:
+        time.sleep(1)
+        for i in range(6):
+            await pilot.press("8")
+        time.sleep(1)
+        await pilot.press("6")
+        time.sleep(1)
         await pilot.press("5")
         time.sleep(1)
         await pilot.press("e")

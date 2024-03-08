@@ -1,3 +1,5 @@
+from typing import List
+
 from attrs import define
 
 
@@ -24,3 +26,18 @@ class InternalConfig:
     main_sd_sleep_ms: float = 1
     set_cpu_aff: bool = False
     rand_quants: int = 4
+    shuffle_programs: List[str] = [
+        "0-+",
+        "0++",
+        "+++",
+        "+-+",
+        "-++",
+        "--+",
+        "0--",
+        "0+-",
+        "++-",
+        "+--",
+        "-+-",
+        "---",
+    ]
+    shuffle_program = "0-+"

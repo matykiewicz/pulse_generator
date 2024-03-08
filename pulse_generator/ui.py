@@ -20,6 +20,7 @@ class PulserDisplay(Static):
     wait_val = reactive(0)
     rands_val = reactive(0)
     rand_val = reactive(0)
+    shuffle_val = reactive(0)
     stopped = reactive(False)
 
     def __init__(
@@ -38,7 +39,7 @@ class PulserDisplay(Static):
         self.internal_config = InternalConfig()
         self.pause_button = pause_button
         self.stop_button = stop_button
-        self.dev_name = dev_name.replace(" ", "_")
+        self.dev_name = dev_name.replace(" ", "_").replace("-", "_").replace("__", "_")
         self.tempos_val = tempos_init
         self.tempo_val = tempo_init
         self.steps_val = steps_init
@@ -47,6 +48,9 @@ class PulserDisplay(Static):
         self.wait_val = waits_init
         self.rands_val = rands_init
         self.rand_val = rands_init
+        self.shuffle_val = self.internal_config.shuffle_programs.index(
+            self.internal_config.shuffle_program
+        )
         self.commands: List[str] = list()
         self.pulser = pulser
         self.interval_sec: float = 0.0
@@ -121,7 +125,7 @@ class PulserDisplay(Static):
             f"D:{self.dev_name} T: {self.tempo_val:03}/{self.tempos_val:03} "
             f"S:{self.step_val:02}/{self.steps_val:02} "
             f"W:{self.wait_val:02}/{self.waits_val:02} "
-            f"R:{self.rand_val:02}/{self.rands_val:02}"
+            f"R:{self.rand_val:02}/{self.rands_val:02} P:{self.shuffle_val}"
         )
 
     def watch_step_val(self) -> None:
@@ -146,6 +150,9 @@ class PulserDisplay(Static):
         self.update_all()
 
     def watch_rands_val(self) -> None:
+        self.update_all()
+
+    def watch_shuffle_val(self) -> None:
         self.update_all()
 
     def start(self) -> bool:
@@ -181,9 +188,14 @@ class PulserDisplay(Static):
             self.commands.append("rand")
             self.pause_button.disabled = True
             self.stop_button.disabled = True
+            shuffle_prog = self.internal_config.shuffle_programs[self.shuffle_val]
             for i in range(self.rands_val):
+                j = i % 2
                 for _rand_ in self.randoms:
-                    self.pulser.rand_in_queue.put(_rand_)
+                    if shuffle_prog[2:3] == "+":
+                        self.pulser.rand_in_queue.put(_rand_)
+                    elif j == 1:
+                        self.pulser.rand_in_queue.put(-_rand_)
             return True
         else:
             return False
@@ -260,9 +272,19 @@ class PulserDisplay(Static):
             return False
 
     def copy_randoms(self, randoms: List[float]) -> bool:
-        for i, random_float in enumerate(randoms):
-            self.randoms[i] = random_float
-        return True
+        if not self.pause_button.disabled:
+            for i, random_float in enumerate(randoms):
+                self.randoms[i] = random_float
+            return True
+        else:
+            return False
+
+    def shuffle_program(self, shuffle_prog: int) -> bool:
+        if not self.pause_button.disabled:
+            self.shuffle_val = shuffle_prog
+            return True
+        else:
+            return False
 
 
 class PulserUI(Static):
@@ -357,10 +379,12 @@ class UI(App):
         self.external_config = external_config
         self.internal_config = InternalConfig()
         self.randoms = [0.0] * (external_config.steps_init // 2)
+        self.shuffle_prod = self.internal_config.shuffle_program
         self.pulser_uis: List[PulserUI] = list()
         self.randomize()
 
     def randomize(self):
+        shuffle_prog = self.shuffle_prod
         for i in range(len(self.randoms)):
             val = random.uniform(
                 -self.external_config.rands_mag, self.external_config.rands_mag
@@ -370,6 +394,30 @@ class UI(App):
                 / self.internal_config.rand_quants
             )
             self.randoms[i] = val
+        self.randoms[0] = 0
+        self.randoms[len(self.randoms) - 1] = 0
+        half = len(self.randoms) // 2
+        for i in range(half, half * 2):
+            if shuffle_prog[0:2] == "0-":
+                self.randoms[i] = -self.randoms[(2 * half) - i - 1]
+            elif shuffle_prog[0:2] == "0+":
+                self.randoms[i] = self.randoms[(2 * half) - i - 1]
+            elif shuffle_prog[0:2] == "++":
+                self.randoms[(2 * half) - i - 1] = abs(self.randoms[(2 * half) - i - 1])
+                self.randoms[i] = self.randoms[(2 * half) - i - 1]
+            elif shuffle_prog[0:2] == "--":
+                self.randoms[(2 * half) - i - 1] = -abs(
+                    self.randoms[(2 * half) - i - 1]
+                )
+                self.randoms[i] = self.randoms[(2 * half) - i - 1]
+            elif shuffle_prog[0:2] == "-+":
+                self.randoms[(2 * half) - i - 1] = -abs(
+                    self.randoms[(2 * half) - i - 1]
+                )
+                self.randoms[i] = -self.randoms[(2 * half) - i - 1]
+            elif shuffle_prog[0:2] == "+-":
+                self.randoms[(2 * half) - i - 1] = abs(self.randoms[(2 * half) - i - 1])
+                self.randoms[i] = -self.randoms[(2 * half) - i - 1]
 
     def compose(self) -> ComposeResult:
         for pulser in self.pulser_devs:
@@ -412,9 +460,19 @@ class UI(App):
             pulser_ui.pulser_display.rands_down(1)
 
     def action_shuffle(self) -> None:
+        current_prog = self.internal_config.shuffle_programs.index(self.shuffle_prod)
+        new_prog = current_prog + 1
+        if new_prog == len(self.internal_config.shuffle_programs):
+            new_prog = 0
         self.randomize()
+        changed = 0
         for pulser_ui in self.pulser_uis:
-            pulser_ui.pulser_display.copy_randoms(self.randoms)
+            changed += int(pulser_ui.pulser_display.copy_randoms(self.randoms))
+            changed += int(
+                pulser_ui.pulser_display.shuffle_program(shuffle_prog=new_prog)
+            )
+        if changed > 0:
+            self.shuffle_prod = self.internal_config.shuffle_programs[new_prog]
 
     def action_toggle_ss_1(self) -> None:
         if len(self.pulser_uis) > 0:
