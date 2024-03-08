@@ -39,7 +39,12 @@ class PulserDisplay(Static):
         self.internal_config = InternalConfig()
         self.pause_button = pause_button
         self.stop_button = stop_button
-        self.dev_name = dev_name.replace(" ", "_").replace("-", "_").replace("__", "_")
+        self.dev_name = (
+            dev_name.replace(" ", "_")
+            .replace("-", "_")
+            .replace("__", "_")
+            .replace("__", "_")
+        )
         self.tempos_val = tempos_init
         self.tempo_val = tempo_init
         self.steps_val = steps_init
@@ -125,7 +130,7 @@ class PulserDisplay(Static):
             f"D:{self.dev_name} T: {self.tempo_val:03}/{self.tempos_val:03} "
             f"S:{self.step_val:02}/{self.steps_val:02} "
             f"W:{self.wait_val:02}/{self.waits_val:02} "
-            f"R:{self.rand_val:02}/{self.rands_val:02} P:{self.shuffle_val}"
+            f"R:{self.rand_val:01}/{self.rands_val:01} P:{self.shuffle_val}"
         )
 
     def watch_step_val(self) -> None:
@@ -252,7 +257,7 @@ class PulserDisplay(Static):
         if self.rands_val == self.rand_val:
             rands_val = self.rands_val
             rands_val += up
-            if rands_val > self.waits_val:
+            if rands_val > self.internal_config.rand_max:
                 rands_val = 1
             self.rands_val = rands_val
             self.rand_val = rands_val

@@ -25,6 +25,7 @@ class InternalConfig:
     main_python_sleep_s: float = 10.0
     main_sd_sleep_ms: float = 1
     set_cpu_aff: bool = False
+    rand_max: int = 9
     rand_quants: int = 4
     shuffle_programs: List[str] = [
         "0-+",
