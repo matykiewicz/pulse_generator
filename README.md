@@ -78,9 +78,29 @@ sudo ~/pulse_generator/scripts/install.sh
 
 The installation process reboots the Jetson Nano to terminal auto-login and runs the python code when executing the 'bashrc' file.
 
-# Final Product
+# Product
 
 This is how my setup looks like:
 
 ![Korg Volca and Jetson Nano as Sync Device](images/IMG_7476.jpg?raw=true "Korg Volca and Jetson Nano as Sync Device")
+
+# Demos
+
+Below are 4 pulser generator demos. We are using Korg Volca Drum and Korg Volca Bass to show benefits of the quadruple pulse generator.
+
+* "Start & Stop" demo:
+
+[!["Start & Stop" demo](https://img.youtube.com/vi/hGNL0OnaLgQ/0.jpg)](https://www.youtube.com/watch?v=hGNL0OnaLgQ)
+
+* "Start & Pause" demo:
+
+[!["Start & Pause" demo](https://img.youtube.com/vi/1fqUybcje1I/0.jpg)](https://www.youtube.com/watch?v=1fqUybcje1I)
+
+* "Start & Tempo" demo:
+
+[!["Start & Tempo" demo:](https://img.youtube.com/vi/laPRA4Uo5z4/0.jpg)](https://www.youtube.com/watch?v=laPRA4Uo5z4)
+
+* "Start & Random" demo:
+
+[!["Start & Random" demo](https://img.youtube.com/vi/zkXXcCxzo_g/0.jpg)](https://www.youtube.com/watch?v=zkXXcCxzo_g)
 
